@@ -141,7 +141,12 @@ public class UserAdminService {
             user.setEmailVerified(false);
         }
         if (displayName != null) user.setDisplayName(displayName);
-        if (status != null) applyApiStatus(user, status);
+        if (status != null) {
+            if ("INACTIVE".equals(status) || "LOCKED".equals(status)) {
+                authorization.checkCanDisableOrDeleteUser(targetId);
+            }
+            applyApiStatus(user, status);
+        }
         user.setUpdatedBy(actorId);
         user.setUpdatedAt(OffsetDateTime.now());
         auditWrite(actorId, "USER_UPDATED", targetId, user.getEmailNormalized());
@@ -165,6 +170,7 @@ public class UserAdminService {
         if (actorId.equals(targetId)) {
             throw new PortalException.Forbidden("Cannot deactivate yourself");
         }
+        authorization.checkCanDisableOrDeleteUser(targetId);
         user.setStatus(UserStatus.DISABLED);
         user.setUpdatedBy(actorId);
         user.setUpdatedAt(OffsetDateTime.now());

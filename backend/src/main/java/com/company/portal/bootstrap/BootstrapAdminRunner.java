@@ -1,5 +1,9 @@
 package com.company.portal.bootstrap;
 
+import com.company.portal.audit.api.AuditContext;
+import com.company.portal.audit.api.AuditOutcome;
+import com.company.portal.audit.api.AuditService;
+import com.company.portal.audit.api.AuditSeverityLevel;
 import com.company.portal.shared.config.PortalProperties;
 import com.company.portal.shared.logging.LogSanitizer;
 import com.company.portal.shared.security.PortalRoles;
@@ -35,15 +39,18 @@ public class BootstrapAdminRunner implements ApplicationRunner {
     private final PasswordEncoder passwordEncoder;
     private final JdbcTemplate jdbc;
     private final TransactionTemplate tx;
+    private final AuditService auditService;
 
     public BootstrapAdminRunner(PortalProperties properties,
                                 PasswordEncoder passwordEncoder,
                                 DataSource dataSource,
-                                PlatformTransactionManager transactionManager) {
+                                PlatformTransactionManager transactionManager,
+                                AuditService auditService) {
         this.properties = properties;
         this.passwordEncoder = passwordEncoder;
         this.jdbc = new JdbcTemplate(dataSource);
         this.tx = new TransactionTemplate(transactionManager);
+        this.auditService = auditService;
     }
 
     @Override
@@ -96,6 +103,18 @@ public class BootstrapAdminRunner implements ApplicationRunner {
                     Bootstrap admin created: id={}, email={}, role={}. \
                     ROTATE THIS PASSWORD IMMEDIATELY AND DISABLE portal.bootstrap.enabled.""",
                     adminId, LogSanitizer.maskEmail(cfg.getAdminEmail()), PortalRoles.SUPER_ADMIN);
+            auditService.append(AuditContext.builder()
+                    .eventType("BOOTSTRAP_ADMIN_CREATED")
+                    .category("BOOTSTRAP")
+                    .severity(AuditSeverityLevel.CRITICAL)
+                    .outcome(AuditOutcome.SUCCESS)
+                    .actorType("SYSTEM")
+                    .targetType("USER")
+                    .targetId(adminId.toString())
+                    .targetDisplay(LogSanitizer.maskEmail(cfg.getAdminEmail()))
+                    .action("BOOTSTRAP_ADMIN_CREATED")
+                    .addPayload("role", PortalRoles.SUPER_ADMIN)
+                    .build());
         }
     }
 }

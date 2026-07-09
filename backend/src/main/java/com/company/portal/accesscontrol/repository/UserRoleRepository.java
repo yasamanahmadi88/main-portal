@@ -16,4 +16,18 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, UserRo
     @Modifying
     @Query("DELETE FROM UserRoleEntity ur WHERE ur.id.userId = :userId")
     int deleteByUserId(@Param("userId") UUID userId);
+
+    /**
+     * Counts distinct users that currently hold the given role code and are not
+     * soft-deleted. Used to enforce the final-active-{@code SUPER_ADMIN} rule.
+     */
+    @Query(value = """
+            SELECT COUNT(DISTINCT ur.user_id)
+            FROM user_roles ur
+            JOIN roles r ON r.id = ur.role_id
+            JOIN users u ON u.id = ur.user_id
+            WHERE r.code = :roleCode
+              AND u.status <> 'DELETED'
+            """, nativeQuery = true)
+    long countActiveUsersWithRole(@Param("roleCode") String roleCode);
 }

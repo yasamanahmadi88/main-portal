@@ -190,9 +190,11 @@ portal:
       count: 10
       length: 10
     encryption:
-      active-key-id: local-dev-key-1
+      # Prefer MFA_ENCRYPTION_KEY_* (compose/.env.example). Fallback keeps local-dev usable.
+      active-key-id: ${MFA_ENCRYPTION_KEY_ID:${PORTAL_MFA_ACTIVE_KEY_ID:local-dev-key-1}}
       keys:
         local-dev-key-1: ${PORTAL_MFA_KEY_LOCAL:ZGV2LW9ubHkta2V5LTMyLWJ5dGVzLWRvLW5vdC11c2U=}
+        local-v1: ${MFA_ENCRYPTION_KEY_BASE64:${PORTAL_MFA_KEY_LOCAL:ZGV2LW9ubHkta2V5LTMyLWJ5dGVzLWRvLW5vdC11c2U=}}
   bootstrap:
     enabled: ${PORTAL_BOOTSTRAP_ENABLED:false}
     admin-email: ${PORTAL_BOOTSTRAP_ADMIN_EMAIL:}

@@ -2,6 +2,7 @@ package com.company.portal.accesscontrol.application;
 
 import com.company.portal.accesscontrol.api.EffectiveAuthorities;
 import com.company.portal.accesscontrol.domain.RoleEntity;
+import com.company.portal.accesscontrol.repository.UserRoleRepository;
 import com.company.portal.shared.error.ErrorCodes;
 import com.company.portal.shared.error.PortalException;
 import com.company.portal.shared.security.PortalRoles;
@@ -20,6 +21,8 @@ import org.springframework.stereotype.Service;
  *   <li>The final {@code SUPER_ADMIN} rule — only another {@code SUPER_ADMIN}
  *       may assign the {@code SUPER_ADMIN} role, and the caller must not be
  *       modifying themselves.</li>
+ *   <li>The last active {@code SUPER_ADMIN} cannot be demoted, disabled, or
+ *       deleted.</li>
  *   <li>Cannot grant a role/permission you do not yourself hold unless you
  *       are {@code SUPER_ADMIN}.</li>
  *   <li>System roles cannot be renamed, deleted, or have their code changed.</li>
@@ -31,9 +34,11 @@ import org.springframework.stereotype.Service;
 public class AuthorizationDecisionService {
 
     private final RbacService rbacService;
+    private final UserRoleRepository userRoles;
 
-    public AuthorizationDecisionService(RbacService rbacService) {
+    public AuthorizationDecisionService(RbacService rbacService, UserRoleRepository userRoles) {
         this.rbacService = rbacService;
+        this.userRoles = userRoles;
     }
 
     public void checkCanAssignRoles(UUID actorId, UUID targetUserId, Collection<RoleEntity> newRoles) {
@@ -44,16 +49,19 @@ public class AuthorizationDecisionService {
         boolean actorIsSuperAdmin = actor.roleCodes().contains(PortalRoles.SUPER_ADMIN);
 
         boolean grantsSuperAdmin = newRoles.stream().anyMatch(r -> PortalRoles.SUPER_ADMIN.equals(r.getCode()));
+        boolean targetIsSuperAdmin = rbacService.loadEffectiveAuthorities(targetUserId)
+                .roleCodes().contains(PortalRoles.SUPER_ADMIN);
 
         if (grantsSuperAdmin && !actorIsSuperAdmin) {
             throw new PortalException.Forbidden(ErrorCodes.FORBIDDEN,
                     "Only SUPER_ADMIN may grant the SUPER_ADMIN role");
         }
-        if (actorId.equals(targetUserId) && grantsSuperAdmin
-                && !rbacService.loadEffectiveAuthorities(targetUserId).roleCodes()
-                        .contains(PortalRoles.SUPER_ADMIN)) {
+        if (actorId.equals(targetUserId) && grantsSuperAdmin && !targetIsSuperAdmin) {
             throw new PortalException.Forbidden(ErrorCodes.FORBIDDEN,
                     "Users cannot escalate themselves to SUPER_ADMIN");
+        }
+        if (targetIsSuperAdmin && !grantsSuperAdmin) {
+            ensureNotFinalSuperAdmin(targetUserId, "demote");
         }
 
         if (!actorIsSuperAdmin) {
@@ -64,6 +72,25 @@ public class AuthorizationDecisionService {
                             "Cannot grant role " + role.getCode() + " (missing permissions)");
                 }
             }
+        }
+    }
+
+    /**
+     * Blocks disable/delete of the last active SUPER_ADMIN account.
+     */
+    public void checkCanDisableOrDeleteUser(UUID targetUserId) {
+        boolean targetIsSuperAdmin = rbacService.loadEffectiveAuthorities(targetUserId)
+                .roleCodes().contains(PortalRoles.SUPER_ADMIN);
+        if (targetIsSuperAdmin) {
+            ensureNotFinalSuperAdmin(targetUserId, "disable");
+        }
+    }
+
+    private void ensureNotFinalSuperAdmin(UUID targetUserId, String action) {
+        long activeSuperAdmins = userRoles.countActiveUsersWithRole(PortalRoles.SUPER_ADMIN);
+        if (activeSuperAdmins <= 1L) {
+            throw new PortalException.Conflict(
+                    "Cannot " + action + " the final active SUPER_ADMIN");
         }
     }
 

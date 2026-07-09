@@ -9,6 +9,7 @@ import com.company.portal.accesscontrol.application.AuthorizationDecisionService
 import com.company.portal.accesscontrol.application.RbacService;
 import com.company.portal.accesscontrol.domain.PermissionEntity;
 import com.company.portal.accesscontrol.domain.RoleEntity;
+import com.company.portal.accesscontrol.repository.UserRoleRepository;
 import com.company.portal.shared.error.PortalException;
 import com.company.portal.shared.security.PortalRoles;
 import java.util.List;
@@ -28,6 +29,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class AuthorizationDecisionServiceTest {
 
     @Mock RbacService rbacService;
+    @Mock UserRoleRepository userRoles;
 
     @InjectMocks AuthorizationDecisionService service;
 
@@ -39,6 +41,8 @@ class AuthorizationDecisionServiceTest {
         RoleEntity superAdmin = roleWith(PortalRoles.SUPER_ADMIN);
         when(rbacService.loadEffectiveAuthorities(adminId))
                 .thenReturn(new EffectiveAuthorities(Set.of("ADMIN"), Set.of("user:read")));
+        when(rbacService.loadEffectiveAuthorities(targetId))
+                .thenReturn(new EffectiveAuthorities(Set.of("USER"), Set.of("self:read")));
 
         assertThatThrownBy(() ->
                 service.checkCanAssignRoles(adminId, targetId, List.of(superAdmin)))
@@ -55,6 +59,8 @@ class AuthorizationDecisionServiceTest {
         when(rbacService.loadEffectiveAuthorities(adminId))
                 .thenReturn(new EffectiveAuthorities(Set.of("ADMIN"),
                         Set.of("user:read", "user:write")));
+        when(rbacService.loadEffectiveAuthorities(targetId))
+                .thenReturn(new EffectiveAuthorities(Set.of("USER"), Set.of("self:read")));
 
         assertThatThrownBy(() ->
                 service.checkCanAssignRoles(adminId, targetId, List.of(powerful)))
@@ -68,9 +74,37 @@ class AuthorizationDecisionServiceTest {
         when(rbacService.loadEffectiveAuthorities(adminId))
                 .thenReturn(new EffectiveAuthorities(Set.of("ADMIN"),
                         Set.of("user:read", "user:write")));
+        when(rbacService.loadEffectiveAuthorities(targetId))
+                .thenReturn(new EffectiveAuthorities(Set.of("USER"), Set.of("self:read")));
 
         assertThatCode(() -> service.checkCanAssignRoles(adminId, targetId, List.of(readOnly)))
                 .doesNotThrowAnyException();
+    }
+
+    @Test
+    void finalSuperAdminCannotBeDemoted() {
+        RoleEntity userRole = roleWith(PortalRoles.USER);
+        when(rbacService.loadEffectiveAuthorities(adminId))
+                .thenReturn(new EffectiveAuthorities(Set.of(PortalRoles.SUPER_ADMIN), Set.of()));
+        when(rbacService.loadEffectiveAuthorities(targetId))
+                .thenReturn(new EffectiveAuthorities(Set.of(PortalRoles.SUPER_ADMIN), Set.of()));
+        when(userRoles.countActiveUsersWithRole(PortalRoles.SUPER_ADMIN)).thenReturn(1L);
+
+        assertThatThrownBy(() ->
+                service.checkCanAssignRoles(adminId, targetId, List.of(userRole)))
+                .isInstanceOf(PortalException.Conflict.class)
+                .hasMessageContaining("final active SUPER_ADMIN");
+    }
+
+    @Test
+    void finalSuperAdminCannotBeDisabled() {
+        when(rbacService.loadEffectiveAuthorities(targetId))
+                .thenReturn(new EffectiveAuthorities(Set.of(PortalRoles.SUPER_ADMIN), Set.of()));
+        when(userRoles.countActiveUsersWithRole(PortalRoles.SUPER_ADMIN)).thenReturn(1L);
+
+        assertThatThrownBy(() -> service.checkCanDisableOrDeleteUser(targetId))
+                .isInstanceOf(PortalException.Conflict.class)
+                .hasMessageContaining("final active SUPER_ADMIN");
     }
 
     @Test
