@@ -16,8 +16,11 @@ Status legend: `PASS` | `FAIL` | `NOT VERIFIED` | `IN PROGRESS`
 | Complete RBAC + escalation protections | PASS | `AuthorizationDecisionService` blocks SUPER_ADMIN structural changes, self-escalation, granting non-held permissions; `AuthorizationDecisionServiceTest` covers matrix |
 | Audit append-only + hash chain | PASS | `DefaultAuditService.append` computes prev/current SHA-256 over canonical payload; `AuditIntegrityVerifier` detects tampering; repository never exposes `update`/`delete`; `AuditHashChainTest` |
 | Bilingual RTL/LTR + themes | NOT VERIFIED | Frontend still pending |
-| Docker configuration | NOT VERIFIED | — |
-| Mandatory CI green | NOT VERIFIED | — |
+| Docker configuration | IN PROGRESS | `docker compose -f compose.yaml config -q` → PASS; `-f compose.yaml -f compose.observability.yaml config -q` → PASS.  Real image build **NOT VERIFIED** locally (`docker buildx` missing in sandbox); runs in `.github/workflows/container.yml` via `docker/setup-buildx-action@v3`. |
+| Mandatory CI green | IN PROGRESS | `.github/workflows/{ci,container,sbom}.yml` committed; awaiting GitHub-side execution.  Backend `./mvnw test` and frontend `npm run lint`/`test`/`build` are green locally. |
+| Supply-chain SBOM | PASS | Backend: CycloneDX Maven plugin already generates `target/bom.json` at `package`; also emitted as JSON+XML by `sbom.yml`.  Frontend: `@cyclonedx/cyclonedx-npm` in `sbom.yml`. |
+| Container image scanning | IN PROGRESS | `.github/workflows/container.yml` builds both images with buildx and runs Trivy with `exit-code: 1` on CRITICAL (SARIF uploaded to code-scanning). Awaiting first successful CI run. |
+| Secret scanning | IN PROGRESS | Gitleaks configured in `infrastructure/security/gitleaks.toml`; runs in `ci.yml` `security` job on every push/PR. |
 | No committed secrets | PASS | `.env.example` only; `SecretEncryptionService` reads key from configuration; no default `admin/admin` |
 | ASVS evidence | IN PROGRESS | Password Argon2 (V2.1), session rotation (V3.2), CSRF cookie (V4.2), rate limiting (V11.5), audit chain (V10.7), problem details (V13) |
 | Pull Request | NOT VERIFIED | — |

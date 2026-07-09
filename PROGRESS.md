@@ -97,9 +97,99 @@ green.
 ## Incomplete
 
 - Architecture/security ADRs and diagrams
-- Docker compose stack for the full application
-- CI workflows
 - Live end-to-end verification against Postgres + Redis containers
+- Actual container image build (`docker buildx` unavailable in this
+  sandbox — see Phase 5 note)
+
+## Phase 5 — infrastructure & CI (in this commit)
+
+- [x] `compose.yaml` — postgres 16.9-alpine, redis 7.4.2-alpine,
+      mailpit v1.21.5, backend (multi-stage JDK 25), frontend
+      (nginx-unprivileged 1.27.3-alpine).  Explicit `frontend`,
+      `backend` and `data` (`internal: true`) networks, `read_only`
+      rootfs on both apps, health checks on every service,
+      `security_opt: no-new-privileges`, `cap_drop: [ALL]`, no
+      secrets embedded — all creds via `${VAR:?}` substitution.
+- [x] `compose.observability.yaml` — otel-collector 0.113.0,
+      prometheus 2.55.1, loki 3.3.2, tempo 2.6.1, grafana 11.3.1
+      with provisioned Prometheus / Loki / Tempo datasources and
+      a JVM/HTTP/login starter dashboard.
+- [x] `infrastructure/docker/backend/Dockerfile` — Temurin 25.0.3+9
+      multi-stage build (deps → build → JRE), non-root UID 10001,
+      tini PID 1, Actuator readiness HEALTHCHECK on port 8081,
+      CycloneDX SBOM copied into the final image at `/app/bom.json`.
+- [x] `infrastructure/docker/frontend/Dockerfile` — Node 24.15.0
+      build stage → nginx-unprivileged runtime (UID 101), read-only
+      rootfs, `/healthz` probe.
+- [x] `infrastructure/nginx/nginx.conf`, `default.conf`,
+      `_api_proxy.inc` — same-origin SPA + reverse proxy, security
+      headers (CSP, HSTS, COOP, CORP, Permissions-Policy,
+      Referrer-Policy, X-Content-Type-Options, X-Frame-Options),
+      gzip with a curated MIME allowlist, per-endpoint rate limits
+      on `/api/v*/auth/{login,mfa,password/*}`, `/actuator/*` blocked
+      except `/actuator/health`, cache-immutable for fingerprinted
+      static, `no-store` for `index.html`.
+- [x] `infrastructure/observability/*` — OTel collector fan-out to
+      Tempo/Prometheus/Loki with PII redaction; Prometheus scrape
+      config for backend + collector + tempo + loki; Loki tsdb
+      single-node config with 7-day retention; Tempo local storage;
+      Grafana provisioning (datasources + dashboards providers).
+- [x] `infrastructure/scripts/bootstrap-admin.sh` — validates the
+      three `BOOTSTRAP_ADMIN_*` env vars and enforces the password
+      policy without ever printing the secret.
+- [x] `infrastructure/scripts/wait-for-healthy.sh` — polls
+      `docker inspect` health status with timeout and per-service
+      failure reporting.
+- [x] `infrastructure/database/init/01-roles.sql` — provisions
+      `portal_migration` (schema owner) + `portal_app` (DML only)
+      with passwords sourced from compose env vars, sets default
+      privileges for future tables, and refuses to run as a non-
+      superuser.
+- [x] `infrastructure/security/gitleaks.toml` — extends the default
+      ruleset, allow-lists documented `change-me-*` placeholders +
+      the zero-key `.env.example` MFA placeholder, adds custom
+      rules for Base64 symmetric keys and Argon2/bcrypt hashes.
+- [x] `.github/workflows/ci.yml` — jobs `backend` (Temurin 25,
+      `./mvnw verify` with Testcontainers on the runner Docker
+      daemon, JUnit annotations, artifact upload of jar + SBOM +
+      jacoco), `frontend` (Node 24, lint + Vitest + `ng build`),
+      `openapi` (spectral + a python structural check on
+      `contracts/openapi/portal-v1.yaml`), `security` (gitleaks +
+      osv-scanner with SARIF upload).  Concurrency-cancel on
+      per-ref, least-privilege token, no `pull_request_target`.
+- [x] `.github/workflows/container.yml` — `compose-validate` job
+      runs `docker compose … config -q` against both compose files,
+      then a matrix `build` job uses `docker/build-push-action@v6`
+      + `aquasecurity/trivy-action@0.28.0` with `exit-code: 1` on
+      CRITICAL and SARIF upload of both scans.
+- [x] `.github/workflows/sbom.yml` — CycloneDX Maven aggregate BOM
+      (JSON + XML) for the backend and `@cyclonedx/cyclonedx-npm`
+      for the frontend, both uploaded as build artifacts.
+- [x] `docs/operations/deployment.md` — compose walkthrough,
+      observability overlay, bootstrap-admin workflow, production
+      requirements (TLS termination, no published data ports,
+      secret management, backups, rolling updates).
+
+### Verification
+
+```
+$ docker compose -f compose.yaml config -q                                   # PASS
+$ docker compose -f compose.yaml -f compose.observability.yaml config -q     # PASS
+```
+
+Services enumerated:
+
+- core: `postgres`, `redis`, `mailpit`, `backend`, `frontend`
+- observability: `otel-collector`, `prometheus`, `loki`, `tempo`, `grafana`
+
+`docker compose build` — **NOT VERIFIED** in this sandbox because
+`docker buildx` is not installed on the environment (`docker buildx
+version` reports `unknown command`, and `DOCKER_BUILDKIT=1 docker
+build` refuses with `BuildKit is enabled but the buildx component is
+missing`).  The Dockerfiles use `--mount=type=cache` and multi-stage
+targets that require BuildKit, so real image builds must run in the
+CI matrix (`.github/workflows/container.yml`) which uses
+`docker/setup-buildx-action@v3`.
 
 ## Frontend (Phase 4)
 
