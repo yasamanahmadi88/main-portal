@@ -158,9 +158,7 @@ code="$(api "$COOKIE_JAR" GET "/api/v1/permissions/matrix")"
 expect_code "$code" "200" "permission matrix readable by SUPER_ADMIN"
 
 # Final SUPER_ADMIN protection: cannot demote sole SUPER_ADMIN
-login "$COOKIE_JAR" "$ADMIN_EMAIL" "$ADMIN_PASSWORD"
-csrf "$COOKIE_JAR"
-me="$(curl -fsS -c "$COOKIE_JAR" -b "$COOKIE_JAR" -H "X-XSRF-TOKEN: $CSRF_TOKEN" "$BASE_URL/api/v1/me")"
+me="$(curl -fsS -c "$COOKIE_JAR" -b "$COOKIE_JAR" "$BASE_URL/api/v1/me")"
 ME_ID="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("id",""))' <<<"$me")"
 [[ -n "$ME_ID" ]] || fail "could not resolve SUPER_ADMIN id from /me"
 code="$(api "$COOKIE_JAR" PUT "/api/v1/users/$ME_ID/roles" "{\"roleIds\":[\"$USER_ROLE_ID\"]}")"
@@ -175,10 +173,43 @@ if [[ "$code" == "404" || "$code" == "405" ]]; then
 fi
 [[ "$code" == "403" || "$code" == "409" || "$code" == "400" ]] \
   && pass "final SUPER_ADMIN disable blocked ($code)" \
-  || { log "disable response $code"; cat /tmp/rbac-resp.json >>"$EVIDENCE"; }
+  || { log "disable response $code"; cat /tmp/rbac-resp.json >>"$EVIDENCE"; fail "final SUPER_ADMIN disable should be blocked, got $code"; }
 
-# Authorized audit access
+# Role create + permission assignment / removal
+ROLE_CODE="CI_ROLE_$(date +%s)"
+code="$(api "$COOKIE_JAR" POST "/api/v1/roles" "$(python3 - <<PY
+import json
+print(json.dumps({"code":"$ROLE_CODE","name":"CI Temp Role","description":"rbac matrix fixture"}))
+PY
+)")"
+[[ "$code" == "201" || "$code" == "200" ]] || { cat /tmp/rbac-resp.json >>"$EVIDENCE"; fail "role create failed HTTP $code"; }
+NEW_ROLE_ID="$(python3 -c 'import json; print(json.load(open("/tmp/rbac-resp.json")).get("id",""))')"
+[[ -n "$NEW_ROLE_ID" ]] || fail "missing new role id"
+pass "role creation accepted"
+
+code="$(api "$COOKIE_JAR" PUT "/api/v1/roles/$NEW_ROLE_ID/permissions" '{"permissionCodes":["user:read","self:read"]}')"
+[[ "$code" == "200" ]] && pass "permission assignment accepted" \
+  || { cat /tmp/rbac-resp.json >>"$EVIDENCE"; fail "permission assignment failed $code"; }
+
+code="$(api "$COOKIE_JAR" PUT "/api/v1/roles/$NEW_ROLE_ID/permissions" '{"permissionCodes":["self:read"]}')"
+[[ "$code" == "200" ]] && pass "permission removal (replace) accepted" \
+  || { cat /tmp/rbac-resp.json >>"$EVIDENCE"; fail "permission removal failed $code"; }
+
+# Unauthorized MFA reset / session revoke as anonymous
+code="$(api "$anon" POST "/api/v1/users/$FIXTURE_USER_ID/mfa-reset" "{}")"
+[[ "$code" == "401" || "$code" == "403" ]] && pass "anonymous MFA reset denied ($code)" || fail "anonymous MFA reset got $code"
+code="$(api "$anon" POST "/api/v1/users/$FIXTURE_USER_ID/sessions/revoke" "{}")"
+[[ "$code" == "401" || "$code" == "403" ]] && pass "anonymous session revoke denied ($code)" || fail "anonymous session revoke got $code"
+
+# Authorized audit access + export authorization
 code="$(api "$COOKIE_JAR" GET "/api/v1/audit-events?page=0&size=5")"
 [[ "$code" == "200" ]] && pass "SUPER_ADMIN audit list authorized" || fail "audit list got $code"
+code="$(api "$COOKIE_JAR" POST "/api/v1/audit-events/export" '{"format":"CSV"}')"
+[[ "$code" == "200" || "$code" == "202" ]] && pass "SUPER_ADMIN audit export authorized ($code)" \
+  || { cat /tmp/rbac-resp.json >>"$EVIDENCE"; fail "audit export got $code"; }
+
+# Object-level: fixture user id must not allow anonymous profile access
+code="$(api "$anon" GET "/api/v1/users/$FIXTURE_USER_ID")"
+[[ "$code" == "401" || "$code" == "403" ]] && pass "IDOR/BOLA anonymous user get denied ($code)" || fail "anonymous user get got $code"
 
 log "=== RBAC MATRIX CHECKS COMPLETED ==="

@@ -157,20 +157,7 @@ code="$(curl -s -o /tmp/forgot.json -w '%{http_code}' -c "$COOKIE_JAR" -b "$COOK
   -d '{"email":"unknown-user@example.com"}')"
 [[ "$code" == "202" || "$code" == "200" ]] && pass "forgot-password generic response HTTP $code" || fail "forgot-password unexpected $code"
 
-# Re-login for authenticated privileged checks (cookie jar may have been rotated).
-csrf
-code="$(curl -s -o /tmp/login-ok3.json -w '%{http_code}' -c "$COOKIE_JAR" -b "$COOKIE_JAR" \
-  -X POST "$BASE_URL/api/v1/auth/login" \
-  -H 'Content-Type: application/json' \
-  -H "$(hdr)" \
-  -d "$(python3 - <<PY
-import json,os
-print(json.dumps({"username":os.environ["ADMIN_EMAIL"],"password":os.environ["ADMIN_PASSWORD"],"rememberDevice":False}))
-PY
-)")"
-[[ "$code" == "200" ]] || fail "re-login for audit checks failed HTTP $code"
-
-# Audit integrity (SUPER_ADMIN) — refresh CSRF without dropping session cookie
+# Audit integrity (SUPER_ADMIN) — reuse authenticated session; refresh CSRF only.
 csrf
 code="$(curl -s -o /tmp/audit-verify.json -w '%{http_code}' -c "$COOKIE_JAR" -b "$COOKIE_JAR" \
   -X POST "$BASE_URL/api/v1/audit-events/verify-integrity" \
@@ -222,5 +209,28 @@ open(os.path.join(report,"security-headers.txt"),"w").write(open("/tmp/headers-r
 print("security headers present")
 PY
 pass "security headers present on frontend responses"
+
+# Login rate limiting — burst against a dedicated non-existent account.
+# Expect at least one 429 from nginx and/or backend within the burst window.
+RATE_JAR="$(mktemp)"
+saw_429=0
+for i in $(seq 1 20); do
+  body="$(curl -fsS -c "$RATE_JAR" -b "$RATE_JAR" "$BASE_URL/api/v1/auth/csrf" 2>/dev/null || true)"
+  tok="$(python3 -c 'import json,sys; 
+try: print(json.load(sys.stdin)["token"])
+except Exception: print("")' <<<"$body")"
+  code="$(curl -s -o /dev/null -w '%{http_code}' -c "$RATE_JAR" -b "$RATE_JAR" \
+    -X POST "$BASE_URL/api/v1/auth/login" \
+    -H 'Content-Type: application/json' \
+    -H "X-XSRF-TOKEN: ${tok}" \
+    -d '{"username":"rate-limit-probe@portal.local","password":"WrongPassword!12345","rememberDevice":false}')"
+  if [[ "$code" == "429" ]]; then
+    saw_429=1
+    break
+  fi
+done
+rm -f "$RATE_JAR"
+[[ "$saw_429" == "1" ]] && pass "login rate limiting returns HTTP 429 under burst" \
+  || fail "expected HTTP 429 from login rate limit within 20 attempts"
 
 log "=== ALL LIVE API CHECKS PASSED ==="
