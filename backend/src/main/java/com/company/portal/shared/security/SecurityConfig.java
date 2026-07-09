@@ -125,6 +125,12 @@ public class SecurityConfig {
                     if (swaggerEnabled) {
                         reg.requestMatchers(SWAGGER_ENDPOINTS).permitAll();
                     }
+                    // Prometheus/metrics scrapes hit the management port (8081), which is
+                    // not published publicly in compose — only health/info remain on the
+                    // public API surface via nginx. Permit scrape endpoints for the
+                    // internal observability network.
+                    reg.requestMatchers("/actuator/prometheus", "/actuator/metrics",
+                            "/actuator/metrics/**").permitAll();
                     reg.requestMatchers("/actuator/**").hasAuthority(PortalPermission.SETTINGS_READ.authority());
                     reg.anyRequest().authenticated();
                 })
