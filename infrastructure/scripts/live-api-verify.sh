@@ -166,9 +166,11 @@ code="$(curl -s -o /tmp/audit-verify.json -w '%{http_code}' -c "$COOKIE_JAR" -b 
   -d '{}')"
 [[ "$code" == "200" ]] || { cat /tmp/audit-verify.json >>"$EVIDENCE"; fail "audit verify HTTP $code"; }
 python3 - <<'PY'
-import json
+import json, os
 d=json.load(open("/tmp/audit-verify.json"))
+open(os.path.join(os.environ.get("REPORT_DIR","/tmp/portal-live-evidence"),"audit-verify-api.json"),"w").write(json.dumps(d, indent=2))
 assert d.get("valid") is True, d
+assert int(d.get("checkedEvents") or 0) > 0, d
 print("checkedEvents", d.get("checkedEvents"))
 PY
 pass "audit hash-chain integrity verification succeeded"

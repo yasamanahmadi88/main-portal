@@ -9,6 +9,7 @@ import com.company.portal.audit.repository.AuditEventChainRepository;
 import com.company.portal.audit.repository.AuditEventRepository;
 import com.company.portal.shared.config.PortalProperties;
 import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -56,7 +57,9 @@ public class DefaultAuditService implements AuditService {
 
         long nextSeq = tail.getLastSequence() + 1;
         UUID eventId = UUID.randomUUID();
-        OffsetDateTime now = OffsetDateTime.now();
+        // Match PostgreSQL timestamptz microsecond precision so integrity
+        // verification recomputes the same hash after a DB round-trip.
+        OffsetDateTime now = OffsetDateTime.now().truncatedTo(ChronoUnit.MICROS);
 
         AuditEventEntity event = new AuditEventEntity(eventId);
         event.setOccurredAt(now);
@@ -71,7 +74,9 @@ public class DefaultAuditService implements AuditService {
         event.setTargetType(ctx.targetType());
         event.setTargetId(ctx.targetId());
         event.setTargetDisplay(ctx.targetDisplay());
-        event.setAction(ctx.action());
+        // action is NOT NULL — default to event type when callers omit it.
+        event.setAction(ctx.action() == null || ctx.action().isBlank()
+                ? ctx.eventType() : ctx.action());
         event.setOutcome(ctx.outcome() == null ? "SUCCESS" : ctx.outcome().name());
         event.setIpAddress(ctx.ipAddress());
         event.setUserAgent(ctx.userAgent());

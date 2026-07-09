@@ -5,8 +5,10 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.HexFormat;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Canonical hash computation for audit events.
@@ -20,6 +22,8 @@ import java.util.HexFormat;
  * required, extend the schema and expose it in {@code payload_json}.</p>
  */
 public final class AuditHashCalculator {
+
+    private static final ObjectMapper JSON = new ObjectMapper();
 
     private final String algorithm;
 
@@ -62,7 +66,8 @@ public final class AuditHashCalculator {
         appendField(sb, e.getRequestId());
         appendField(sb, e.getTraceId());
         appendField(sb, e.getSessionId());
-        appendField(sb, e.getPayloadJson());
+        // JSONB round-trips may reformat whitespace; canonicalize before hashing.
+        appendField(sb, normalizeJson(e.getPayloadJson()));
         return sb.toString();
     }
 
@@ -73,8 +78,27 @@ public final class AuditHashCalculator {
         sb.append(v == null ? "" : v);
     }
 
+    /**
+     * PostgreSQL {@code timestamptz} stores microsecond precision and Hibernate may
+     * reload offsets as {@code +00:00} instead of {@code Z}. Canonicalize via
+     * {@link java.time.Instant} so write-time and verify-time hashes match.
+     */
     private static String toIsoUtc(OffsetDateTime dt) {
-        if (dt == null) return "";
-        return dt.withOffsetSameInstant(ZoneOffset.UTC).toString();
+        if (dt == null) {
+            return "";
+        }
+        return dt.toInstant().truncatedTo(ChronoUnit.MICROS).toString();
+    }
+
+    static String normalizeJson(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return "{}";
+        }
+        try {
+            JsonNode node = JSON.readTree(raw);
+            return JSON.writeValueAsString(node);
+        } catch (RuntimeException ex) {
+            return raw.trim();
+        }
     }
 }

@@ -59,6 +59,15 @@ class AuditHashChainTest {
         assertThat(tampered).isNotEqualTo(secondHash);
     }
 
+    @Test
+    void hashIgnoresSubMicrosecondTimestampNoise() {
+        AuditEventEntity a = sampleEvent(UUID.fromString("11111111-1111-1111-1111-111111111111"), 1L);
+        a.setOccurredAt(OffsetDateTime.parse("2024-01-01T00:00:00.123456789Z"));
+        AuditEventEntity b = sampleEvent(UUID.fromString("11111111-1111-1111-1111-111111111111"), 1L);
+        b.setOccurredAt(OffsetDateTime.parse("2024-01-01T00:00:00.123456000Z"));
+        assertThat(calc.compute(a, null)).isEqualTo(calc.compute(b, null));
+    }
+
     private static AuditEventEntity sampleEvent(UUID id, long sequenceNumber) {
         AuditEventEntity event = new AuditEventEntity(id);
         event.setOccurredAt(OffsetDateTime.parse("2024-01-01T00:00:00Z"));
