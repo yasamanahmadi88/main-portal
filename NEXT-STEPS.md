@@ -1,7 +1,6 @@
 # Next Steps
 
-1. Wait for CI on `cursor/complete-enterprise-portal` after CI fix push.
-2. If container build fails, inspect Dockerfile/Trivy CRITICAL findings and remediate.
-3. Run compose stack in an environment with working BuildKit for smoke tests.
-4. Expand ASVS evidence rows with CI artifact links.
-5. Relevant ADRs: ADR-0001 through ADR-0005.
+1. Review and merge PR #2 when ready.
+2. Run full compose stack smoke (login, CSRF, MFA, RBAC) in a BuildKit-capable environment.
+3. Expand Playwright e2e against the live stack and attach evidence to ASVS rows.
+4. Rotate MFA encryption keys and bootstrap credentials for any shared environments.
