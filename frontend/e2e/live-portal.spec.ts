@@ -228,8 +228,7 @@ test.describe('Live login / logout / storage', () => {
   });
 
   test('successful login, navbar controls, no browser token storage, logout', async ({
-    page,
-    request
+    page
   }) => {
     const consoleErrors: string[] = [];
     page.on('console', (msg) => {
@@ -297,23 +296,37 @@ test.describe('Live admin surfaces accessibility', () => {
   test.skip(!ADMIN_EMAIL || !ADMIN_PASSWORD, 'Admin credentials not provided');
 
   test('users, roles, permissions, profile security pages axe', async ({ page }) => {
+    test.setTimeout(120_000);
+    // Authenticate via API into this browser context to avoid extra UI logins
+    // (and login rate-limit pressure) after the earlier serial suite.
     await page.goto('/auth/login');
-    await switchToEnglish(page);
-    await fillLoginForm(page, ADMIN_EMAIL, ADMIN_PASSWORD);
-    await submitLogin(page);
-    // Login may be rate-limited after prior suite logins; wait and retry once.
-    if (page.url().includes('/auth/login')) {
-      await page.waitForTimeout(25_000);
-      await fillLoginForm(page, ADMIN_EMAIL, ADMIN_PASSWORD);
-      await submitLogin(page);
+    await expect(page.locator('[data-testid="language-switcher"]')).toBeVisible({ timeout: 30_000 });
+    const token = await csrf(page.request);
+    let loginRes = await page.request.post('/api/v1/auth/login', {
+      headers: { 'X-XSRF-TOKEN': token, 'Content-Type': 'application/json' },
+      data: { username: ADMIN_EMAIL, password: ADMIN_PASSWORD, rememberDevice: false }
+    });
+    if (loginRes.status() === 429) {
+      const body = await loginRes.json().catch(() => ({}));
+      const retryAfter = Number(body?.retry_after_seconds ?? 30) || 30;
+      await page.waitForTimeout((retryAfter + 2) * 1000);
+      const token2 = await csrf(page.request);
+      loginRes = await page.request.post('/api/v1/auth/login', {
+        headers: { 'X-XSRF-TOKEN': token2, 'Content-Type': 'application/json' },
+        data: { username: ADMIN_EMAIL, password: ADMIN_PASSWORD, rememberDevice: false }
+      });
     }
-    await page.waitForURL(/\/dashboard/, { timeout: 30_000 });
+    expect(loginRes.status(), await loginRes.text()).toBe(200);
+
+    await page.goto('/dashboard');
+    await page.waitForURL(/\/dashboard/, { timeout: 20_000 });
     await dismissTransientOverlays(page);
 
     const paths = ['/users', '/roles', '/permissions', '/profile/security', '/dashboard'];
     for (const path of paths) {
       await page.goto(path);
       expect(page.url(), `redirected to login for ${path}`).not.toContain('/auth/login');
+      await expect(page.locator('[data-testid="language-switcher"]')).toBeVisible({ timeout: 20_000 });
       await dismissTransientOverlays(page);
       await axeSeriousCritical(page, path);
     }
