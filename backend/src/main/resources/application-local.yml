@@ -1,0 +1,35 @@
+spring:
+  docker:
+    compose:
+      enabled: false
+  jpa:
+    properties:
+      hibernate:
+        generate_statistics: false
+
+server:
+  servlet:
+    session:
+      cookie:
+        secure: false
+
+logging:
+  level:
+    com.company.portal: DEBUG
+    org.springframework.security: INFO
+
+springdoc:
+  swagger-ui:
+    enabled: true
+
+portal:
+  session:
+    cookie:
+      name: PORTAL_SESSION
+      secure: false
+      host-prefix: false
+      same-site: LAX
+  security:
+    allowed-origins:
+      - http://localhost:4200
+      - http://localhost:8080

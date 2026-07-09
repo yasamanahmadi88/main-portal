@@ -1,0 +1,237 @@
+spring:
+  application:
+    name: portal
+  profiles:
+    default: local
+    active: ${SPRING_PROFILES_ACTIVE:local}
+  main:
+    banner-mode: log
+  threads:
+    virtual:
+      enabled: true
+  docker:
+    compose:
+      enabled: false
+  mvc:
+    problemdetails:
+      enabled: true
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+      write-durations-as-timestamps: false
+      indent-output: false
+    deserialization:
+      fail-on-unknown-properties: false
+    time-zone: UTC
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/portal}
+    username: ${DB_USERNAME:portal_app}
+    password: ${DB_PASSWORD:portal}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      pool-name: portal-hikari
+      register-mbeans: true
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
+        query:
+          in_clause_parameter_padding: true
+        generate_statistics: false
+    show-sql: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: false
+    locations: classpath:db/migration
+    validate-on-migrate: true
+    schemas: public
+    default-schema: public
+    placeholders:
+      app_role: portal_app
+      migration_role: portal_migration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 3s
+      client-type: lettuce
+      lettuce:
+        pool:
+          enabled: true
+          max-active: 16
+          max-idle: 8
+          min-idle: 2
+  session:
+    store-type: redis
+    timeout: 30m
+    redis:
+      namespace: portal:session
+      flush-mode: on_save
+      repository-type: indexed
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+
+server:
+  port: 8080
+  forward-headers-strategy: framework
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/plain,text/css,text/html,text/javascript
+    min-response-size: 1024
+  http2:
+    enabled: true
+  error:
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+    include-exception: false
+  shutdown: graceful
+  servlet:
+    session:
+      cookie:
+        name: PORTAL_SESSION
+        http-only: true
+        same-site: lax
+        secure: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      show-components: when-authorized
+      probes:
+        enabled: true
+    info:
+      access: read-only
+    prometheus:
+      access: read-only
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  info:
+    env:
+      enabled: true
+    git:
+      mode: simple
+    build:
+      enabled: true
+
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    disable-swagger-default-url: true
+    tags-sorter: alpha
+    operations-sorter: alpha
+
+logging:
+  level:
+    root: INFO
+    com.company.portal: INFO
+    org.springframework.web: INFO
+    org.hibernate.SQL: WARN
+    org.flywaydb: INFO
+  charset:
+    console: UTF-8
+    file: UTF-8
+
+portal:
+  public-base-url: ${PORTAL_PUBLIC_BASE_URL:http://localhost:8080}
+  session:
+    idle-timeout: 30m
+    absolute-timeout: 12h
+    renewal-window: 5m
+    max-concurrent-sessions: 5
+    cookie:
+      name: PORTAL_SESSION
+      secure: false
+      http-only: true
+      same-site: LAX
+      path: /
+      host-prefix: false
+  mfa:
+    totp:
+      issuer: Portal
+      time-step-seconds: 30
+      digits: 6
+      window: 1
+    recovery-codes:
+      count: 10
+      length: 10
+    encryption:
+      active-key-id: local-dev-key-1
+      keys:
+        local-dev-key-1: ${PORTAL_MFA_KEY_LOCAL:ZGV2LW9ubHkta2V5LTMyLWJ5dGVzLWRvLW5vdC11c2U=}
+  bootstrap:
+    enabled: ${PORTAL_BOOTSTRAP_ENABLED:false}
+    admin-email: ${PORTAL_BOOTSTRAP_ADMIN_EMAIL:}
+    admin-password: ${PORTAL_BOOTSTRAP_ADMIN_PASSWORD:}
+    admin-display-name: ${PORTAL_BOOTSTRAP_ADMIN_DISPLAY_NAME:Portal Administrator}
+  rate-limit:
+    login:
+      capacity: 10
+      refill-tokens: 10
+      refill-period: 1m
+    password-reset:
+      capacity: 5
+      refill-tokens: 5
+      refill-period: 15m
+    mfa-verify:
+      capacity: 10
+      refill-tokens: 10
+      refill-period: 5m
+    global-api:
+      capacity: 600
+      refill-tokens: 600
+      refill-period: 1m
+  security:
+    csp: "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'"
+    referrer-policy: strict-origin-when-cross-origin
+    permissions-policy: "camera=(), microphone=(), geolocation=(), payment=()"
+    hsts-max-age-seconds: 31536000
+    allowed-origins:
+      - http://localhost:4200
+  password:
+    argon2:
+      memory-kib: 65536
+      iterations: 3
+      parallelism: 1
+      salt-length: 16
+      hash-length: 32
+  audit:
+    hash-chain-enabled: true
+    hash-algorithm: SHA-256

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="false">
+
+  <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+  <property name="LOG_LEVEL_PATTERN"
+            value="%5p [%X{correlation_id:-}] [%X{request_id:-}] [%X{trace_id:-}] [%X{span_id:-}]"/>
+  <property name="CONSOLE_LOG_PATTERN"
+            value="%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(${LOG_LEVEL_PATTERN}) %clr(${PID:-}){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n%wEx"/>
+
+  <springProfile name="!prod">
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+      <encoder>
+        <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+        <charset>UTF-8</charset>
+      </encoder>
+    </appender>
+
+    <root level="INFO">
+      <appender-ref ref="CONSOLE"/>
+    </root>
+  </springProfile>
+
+  <springProfile name="prod">
+    <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+      <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+        <includeMdcKeyName>correlation_id</includeMdcKeyName>
+        <includeMdcKeyName>request_id</includeMdcKeyName>
+        <includeMdcKeyName>trace_id</includeMdcKeyName>
+        <includeMdcKeyName>span_id</includeMdcKeyName>
+        <includeMdcKeyName>user_id</includeMdcKeyName>
+        <includeMdcKeyName>session_id</includeMdcKeyName>
+        <fieldNames>
+          <timestamp>@timestamp</timestamp>
+          <message>message</message>
+          <thread>thread</thread>
+          <logger>logger</logger>
+          <level>level</level>
+        </fieldNames>
+        <customFields>{"service":"portal"}</customFields>
+      </encoder>
+    </appender>
+
+    <root level="INFO">
+      <appender-ref ref="JSON"/>
+    </root>
+  </springProfile>
+
+  <logger name="com.company.portal" level="INFO"/>
+  <logger name="org.springframework.web" level="INFO"/>
+  <logger name="org.hibernate.SQL" level="WARN"/>
+
+</configuration>
