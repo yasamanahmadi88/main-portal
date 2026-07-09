@@ -21,16 +21,17 @@ METRICS="$(docker compose exec -T backend \
 if [[ -z "$METRICS" ]]; then
   log "NOTE: could not scrape actuator/prometheus from backend container"
 else
-  echo "$METRICS" | head -c 4000 > "$REPORT_DIR/prometheus-sample.txt"
+  # Avoid SIGPIPE under `set -o pipefail` when head closes early.
+  printf '%s' "$METRICS" | head -c 4000 > "$REPORT_DIR/prometheus-sample.txt" || true
   for needle in 'http_server_requests' 'jvm_memory' 'hikaricp' 'login' 'rate'; do
-    if echo "$METRICS" | grep -qi "$needle"; then
+    if printf '%s' "$METRICS" | grep -qi -- "$needle"; then
       pass "prometheus sample contains marker: $needle"
     else
       log "NOTE: prometheus sample missing marker: $needle"
     fi
   done
   # High-cardinality label guard: email/userId/sessionId must not appear as label names
-  if echo "$METRICS" | grep -E '\{[^}]*\b(email|user_id|userId|session_id|sessionId)=' >/dev/null; then
+  if printf '%s' "$METRICS" | grep -E '\{[^}]*\b(email|user_id|userId|session_id|sessionId)=' >/dev/null; then
     fail "high-cardinality identity labels detected in prometheus metrics"
   else
     pass "no email/userId/sessionId label names in prometheus sample"
