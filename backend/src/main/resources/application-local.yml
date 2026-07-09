@@ -13,6 +13,12 @@ server:
       cookie:
         secure: false
 
+# Local/CI compose stacks often omit the observability overlay. Keep OTel
+# export off unless MANAGEMENT_OPENTELEMETRY_ENABLED is explicitly true.
+management:
+  opentelemetry:
+    enabled: ${MANAGEMENT_OPENTELEMETRY_ENABLED:false}
+
 logging:
   level:
     com.company.portal: DEBUG

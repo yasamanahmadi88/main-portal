@@ -175,7 +175,11 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}
       OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-portal-backend}
       OTEL_RESOURCE_ATTRIBUTES: service.namespace=portal,deployment.environment=${PORTAL_ENV:-local}
-      TELEMETRY_ENABLED: ${TELEMETRY_ENABLED:-true}
+      # Default off for compose.yaml alone; enable via compose.observability.yaml
+      # or TELEMETRY_ENABLED=true when the OTel collector is present.
+      TELEMETRY_ENABLED: ${TELEMETRY_ENABLED:-false}
+      MANAGEMENT_OPENTELEMETRY_ENABLED: ${TELEMETRY_ENABLED:-false}
+      OTEL_SDK_DISABLED: ${OTEL_SDK_DISABLED:-true}
       MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:-health,info,prometheus,metrics}
       MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: ${MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS:-when_authorized}
       # Bootstrap admin — Spring binds portal.bootstrap.* from PORTAL_BOOTSTRAP_*.

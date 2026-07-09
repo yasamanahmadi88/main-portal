@@ -37,6 +37,14 @@ x-logging: &default-logging
       max-file: "5"
 
 services:
+  # When this overlay is active, turn OTel export back on for the backend.
+  backend:
+    environment:
+      TELEMETRY_ENABLED: "true"
+      MANAGEMENT_OPENTELEMETRY_ENABLED: "true"
+      OTEL_SDK_DISABLED: "false"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.113.0
     <<: [*restart-policy, *default-logging]

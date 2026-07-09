@@ -96,6 +96,7 @@ jobs:
             echo "PORTAL_HTTP_PORT=8080"
             echo "SESSION_COOKIE_SECURE=false"
             echo "TELEMETRY_ENABLED=false"
+            echo "OTEL_SDK_DISABLED=true"
             echo "GRAFANA_ADMIN_USER=admin"
             echo "GRAFANA_ADMIN_PASSWORD=Grafana$(openssl rand -hex 16)Aa1"
           } > "$GITHUB_WORKSPACE/.env"

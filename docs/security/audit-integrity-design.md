@@ -37,9 +37,9 @@ flowchart LR
 
 ## Database hardening
 
-- Application runtime user: `INSERT` and `SELECT` only on `audit_events`.
+- Application runtime user: `INSERT` and `SELECT` only on `audit_events` (no `UPDATE`/`DELETE`/`TRUNCATE`).
+- Application runtime user: `SELECT`/`INSERT`/`UPDATE` on `audit_event_chain` (stream cursor); no `DELETE`/`TRUNCATE`.
 - Migration user: schema changes only during deployment.
-- No runtime `UPDATE` or `DELETE` on audit tables.
 - Backups must preserve audit rows and verification checkpoints.
 
 ## Critical audited operations
@@ -79,7 +79,7 @@ Audit metadata must not include:
 
 ## Runtime privilege enforcement
 
-Flyway `V7__audit_append_only_grants.sql` revokes `UPDATE` / `DELETE` / `TRUNCATE` on `audit_events` and `audit_event_chain` from the runtime role (`portal_app`) after V5's broad DML grants, leaving `SELECT` + `INSERT` only.
+Flyway `V7` / `V9` revoke `UPDATE`/`DELETE`/`TRUNCATE` on `audit_events` (append-only log) while allowing `UPDATE` on `audit_event_chain` so the stream cursor can advance under a row lock. `DELETE`/`TRUNCATE` remain revoked on the chain table.
 
 ## Verification evidence
 

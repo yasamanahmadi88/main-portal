@@ -28,12 +28,13 @@ else
   fail "runtime DB role must not UPDATE/DELETE audit_events (got $PRIVS)"
 fi
 
+# Chain cursor must allow UPDATE (advance last_hash/sequence) but never DELETE.
 CHAIN_PRIVS="$("${PSQL[@]}" -tAc "SELECT has_table_privilege('${APP_USER}', 'audit_event_chain', 'UPDATE')::text || ',' || has_table_privilege('${APP_USER}', 'audit_event_chain', 'DELETE')::text;" | tr -d '[:space:]')"
 log "portal_app audit_event_chain privileges UPDATE,DELETE=$CHAIN_PRIVS"
-[[ "$CHAIN_PRIVS" == "false,false" ]] && pass "runtime role lacks UPDATE/DELETE on audit_event_chain" \
-  || fail "runtime DB role must not UPDATE/DELETE audit_event_chain (got $CHAIN_PRIVS)"
+[[ "$CHAIN_PRIVS" == "true,false" ]] && pass "runtime role can UPDATE chain cursor but not DELETE" \
+  || fail "audit_event_chain privileges expected UPDATE=true,DELETE=false (got $CHAIN_PRIVS)"
 
-# Attempt mutation as app role — must fail
+# Attempt mutation of immutable audit_events as app role — must fail
 set +e
 "${PSQL[@]}" <<SQL >/tmp/audit-tamper.txt 2>&1
 SET ROLE ${APP_USER};
@@ -45,14 +46,18 @@ SET ROLE ${APP_USER};
 DELETE FROM audit_events WHERE FALSE;
 SQL
 del=$?
+"${PSQL[@]}" <<SQL >>/tmp/audit-tamper.txt 2>&1
+SET ROLE ${APP_USER};
+DELETE FROM audit_event_chain WHERE FALSE;
+SQL
+chain_del=$?
 set -e
 cat /tmp/audit-tamper.txt >>"$EVIDENCE" || true
 # Privilege revoke means statements error; either non-zero exit or ERROR in output is success
-if grep -qiE 'permission denied|must be owner|ERROR' /tmp/audit-tamper.txt || [[ $upd -ne 0 || $del -ne 0 ]]; then
-  pass "UPDATE/DELETE as runtime role rejected"
+if grep -qiE 'permission denied|must be owner|ERROR' /tmp/audit-tamper.txt || [[ $upd -ne 0 || $del -ne 0 || $chain_del -ne 0 ]]; then
+  pass "UPDATE/DELETE on audit_events and DELETE on chain rejected for runtime role"
 else
-  # WHERE FALSE may succeed without privilege check on some PG versions if privilege exists
-  fail "UPDATE/DELETE as runtime role unexpectedly succeeded"
+  fail "audit tamper attempts as runtime role unexpectedly succeeded"
 fi
 
 # Hash chain fields populated
