@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, Inject, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import {
   MAT_DIALOG_DATA,
   MatDialog,
@@ -72,10 +72,9 @@ export interface ConfirmDialogData {
   ]
 })
 export class ConfirmDialogComponent {
-  constructor(
-    public dialogRef: MatDialogRef<ConfirmDialogComponent, boolean>,
-    @Inject(MAT_DIALOG_DATA) public data: ConfirmDialogData
-  ) {}
+  readonly dialogRef =
+    inject<MatDialogRef<ConfirmDialogComponent, boolean>>(MatDialogRef);
+  readonly data = inject<ConfirmDialogData>(MAT_DIALOG_DATA);
 }
 
 export async function openConfirmDialog(

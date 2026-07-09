@@ -47,7 +47,7 @@ const STORAGE_KEY = environment.storageKeys.language;
 @Injectable({ providedIn: 'root' })
 export class I18nService {
   private readonly translate = inject(TranslateService);
-  private readonly directionality = inject(Directionality) as unknown as WritableDirectionality;
+  private readonly directionality = inject(Directionality);
   private readonly document = inject(DOCUMENT);
 
   private readonly _current = signal<Language>(environment.defaultLanguage as Language);
@@ -121,8 +121,16 @@ export class I18nService {
       this.document.documentElement.setAttribute('lang', language);
       this.document.documentElement.setAttribute('dir', descriptor.direction);
     }
+    // Notify CDK-aware components of a direction change. `value` is
+    // read-only on newer CDK builds so we mutate the private backing field
+    // when it exists; consumers should rely on `change` for reactive updates.
     this.directionality.change?.emit(descriptor.direction);
-    (this.directionality as WritableDirectionality).value = descriptor.direction;
+    try {
+      const writable = this.directionality as unknown as { value: 'ltr' | 'rtl' };
+      writable.value = descriptor.direction;
+    } catch {
+      /* CDK has locked `value` down; the change emitter is the source of truth */
+    }
     if (persist && typeof localStorage !== 'undefined') {
       try {
         localStorage.setItem(STORAGE_KEY, language);
@@ -132,5 +140,3 @@ export class I18nService {
     }
   }
 }
-
-type WritableDirectionality = Directionality & { value: 'ltr' | 'rtl' };

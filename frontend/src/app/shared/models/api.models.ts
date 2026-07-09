@@ -106,7 +106,7 @@ export interface LoginRequest {
 
 export interface MfaChallenge {
   challengeId: string;
-  methods: Array<'TOTP' | 'RECOVERY_CODE'>;
+  methods: ('TOTP' | 'RECOVERY_CODE')[];
   expiresAt: Iso8601;
 }
 
@@ -203,7 +203,7 @@ export interface AssignPermissionsRequest {
 export interface PermissionMatrix {
   roles: Role[];
   permissions: Permission[];
-  assignments: Array<{ roleId: UUID; permissionCode: string }>;
+  assignments: { roleId: UUID; permissionCode: string }[];
 }
 
 export interface AuditActor {
@@ -293,7 +293,7 @@ export interface ProblemDetail {
   instance?: string;
   code?: string;
   traceId?: string;
-  errors?: Array<{ field: string; message: string; code?: string }>;
+  errors?: { field: string; message: string; code?: string }[];
 }
 
 export interface ActionResult {

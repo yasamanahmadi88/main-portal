@@ -4,7 +4,6 @@ import {
   ElementRef,
   ViewChild,
   forwardRef,
-  inject,
   input,
   signal
 } from '@angular/core';
@@ -93,8 +92,12 @@ export class PasswordInputComponent implements ControlValueAccessor {
   readonly capsLockOn = signal(false);
   readonly disabled = signal(false);
 
-  private onChange: (value: string) => void = () => {};
-  onTouched: () => void = () => {};
+  private onChange: (value: string) => void = () => {
+    /* replaced by registerOnChange */
+  };
+  onTouched: () => void = () => {
+    /* replaced by registerOnTouched */
+  };
 
   writeValue(value: string | null): void {
     if (this.inputRef?.nativeElement) {
