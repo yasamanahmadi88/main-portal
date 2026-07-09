@@ -57,8 +57,9 @@ code="$(curl -s -o /tmp/login-fail.json -w '%{http_code}' -c "$COOKIE_JAR" -b "$
 grep -qiE 'does-not-exist|not found|no such user' /tmp/login-fail.json && fail "login error enumerates account" || pass "login failure does not enumerate account"
 
 csrf
-# Successful login
-code="$(curl -s -o /tmp/login-ok.json -w '%{http_code}' -c "$COOKIE_JAR" -b "$COOKIE_JAR" \
+# Successful login — capture response headers once (cookie flags + body).
+code="$(curl -s -D /tmp/login-headers.txt -o /tmp/login-ok.json -w '%{http_code}' \
+  -c "$COOKIE_JAR" -b "$COOKIE_JAR" \
   -X POST "$BASE_URL/api/v1/auth/login" \
   -H 'Content-Type: application/json' \
   -H "$(hdr)" \
@@ -68,6 +69,7 @@ print(json.dumps({"username":os.environ["ADMIN_EMAIL"],"password":os.environ["AD
 PY
 )")"
 [[ "$code" == "200" ]] || { cat /tmp/login-ok.json >>"$EVIDENCE"; fail "login expected 200 got $code"; }
+cp /tmp/login-ok.json /tmp/login-ok2.json
 python3 - <<'PY' /tmp/login-ok.json
 import json,sys
 d=json.load(open(sys.argv[1]))
@@ -90,25 +92,12 @@ assert any("SESSION" in n.upper() or n.startswith("__Host-") or n=="PORTAL_SESSI
 session=[c for c in jar if "SESSION" in c.name.upper() or c.name=="PORTAL_SESSION" or c.name.startswith("__Host-")]
 assert session, names
 c=session[0]
-assert c.has_nonstandard_attr("HttpOnly") or True  # MozillaCookieJar may not expose HttpOnly; check Set-Cookie via curl -v separately
 print("session cookie name:", c.name)
 open("$EVIDENCE","a").write(f"session cookie name: {c.name}\\n")
 PY
 pass "session cookie present after login"
 
-# Cookie flags via verbose login (redact token values)
-csrf
-curl -s -D /tmp/login-headers.txt -o /tmp/login-ok2.json -c "$COOKIE_JAR" -b "$COOKIE_JAR" \
-  -X POST "$BASE_URL/api/v1/auth/login" \
-  -H 'Content-Type: application/json' \
-  -H "$(hdr)" \
-  -d "$(python3 - <<PY
-import json,os
-print(json.dumps({"username":os.environ["ADMIN_EMAIL"],"password":os.environ["ADMIN_PASSWORD"],"rememberDevice":False}))
-PY
-)" >/dev/null
 python3 - <<'PY'
-import re
 text=open("/tmp/login-headers.txt").read()
 set_cookies=[l for l in text.splitlines() if l.lower().startswith("set-cookie:")]
 import os
@@ -118,7 +107,6 @@ open(os.path.join(report,"cookie-flags.txt"),"w").write("\n".join(set_cookies)+"
 joined="\n".join(set_cookies).lower()
 assert "httponly" in joined, set_cookies
 assert "samesite" in joined, set_cookies
-# Secure may be absent on local HTTP profile — record either way
 print("cookie flags captured; httponly+samesite present; secure=", "secure" in joined)
 PY
 pass "session Set-Cookie includes HttpOnly and SameSite"

@@ -249,7 +249,10 @@ jobs:
           ADMIN_EMAIL: ci-admin@portal.local
           ADMIN_PASSWORD: ${{ steps.secrets.outputs.BOOT_PW }}
           REPORT_DIR: ${{ env.REPORT_DIR }}
-        run: ./infrastructure/scripts/rbac-matrix-verify.sh
+        run: |
+          # Allow nginx login zone tokens to refill after live-api-verify.
+          sleep 15
+          ./infrastructure/scripts/rbac-matrix-verify.sh
 
       - name: Audit DB append-only verification
         env:

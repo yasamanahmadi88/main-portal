@@ -29,18 +29,32 @@ csrf() {
 
 login() {
   local jar="$1" email="$2" password="$3"
-  csrf "$jar"
-  local code
-  code="$(curl -s -o /tmp/rbac-login.json -w '%{http_code}' -c "$jar" -b "$jar" \
-    -X POST "$BASE_URL/api/v1/auth/login" \
-    -H 'Content-Type: application/json' \
-    -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
-    -d "$(python3 - <<PY
+  local code attempt
+  # Retry on nginx/backend rate-limit leftovers from prior CI steps.
+  for attempt in 1 2 3 4 5 6; do
+    csrf "$jar"
+    code="$(curl -s -o /tmp/rbac-login.json -w '%{http_code}' -c "$jar" -b "$jar" \
+      -X POST "$BASE_URL/api/v1/auth/login" \
+      -H 'Content-Type: application/json' \
+      -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
+      -d "$(python3 - <<PY
 import json
 print(json.dumps({"username":"$email","password":"$password","rememberDevice":False}))
 PY
 )")"
-  [[ "$code" == "200" ]] || { cat /tmp/rbac-login.json >>"$EVIDENCE"; fail "login failed for $email HTTP $code"; }
+    if [[ "$code" == "200" ]]; then
+      return 0
+    fi
+    if [[ "$code" == "429" ]]; then
+      log "login rate-limited (attempt $attempt); sleeping before retry"
+      sleep $((attempt * 5))
+      continue
+    fi
+    cat /tmp/rbac-login.json >>"$EVIDENCE"
+    fail "login failed for $email HTTP $code"
+  done
+  cat /tmp/rbac-login.json >>"$EVIDENCE"
+  fail "login failed for $email after retries (last HTTP $code)"
 }
 
 api() {
