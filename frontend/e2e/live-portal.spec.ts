@@ -78,6 +78,24 @@ async function openThemeMenu(page: Page): Promise<void> {
   await trigger.click();
 }
 
+async function switchToEnglish(page: Page): Promise<void> {
+  await openLanguageMenu(page);
+  await page.getByRole('menuitem', { name: /English/i }).click();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
+}
+
+async function fillLoginForm(page: Page, username: string, password: string): Promise<void> {
+  // Material password control does not expose formcontrolname on the native input.
+  await page.getByRole('textbox', { name: /username or email|نام کاربری|ایمیل/i }).fill(username);
+  await page.getByLabel(/^password$|^رمز عبور$/i).fill(password);
+}
+
+async function submitLogin(page: Page): Promise<void> {
+  const submit = page.getByRole('button', { name: /sign in|ورود/i });
+  await expect(submit).toBeEnabled({ timeout: 10_000 });
+  await submit.click();
+}
+
 async function axeSeriousCritical(page: Page, label: string): Promise<void> {
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag22aa'])
@@ -182,11 +200,9 @@ test.describe('Live login / logout / storage', () => {
 
   test('failed login shows generic error', async ({ page }) => {
     await page.goto('/auth/login');
-    await openLanguageMenu(page);
-    await page.getByRole('menuitem', { name: /English/i }).click();
-    await page.locator('input[formcontrolname="username"]').fill('nobody@example.com');
-    await page.locator('input[name="password"], input[formcontrolname="password"]').fill('WrongPassword!12345');
-    await page.locator('button[type="submit"]').click();
+    await switchToEnglish(page);
+    await fillLoginForm(page, 'nobody@example.com', 'WrongPassword!12345');
+    await submitLogin(page);
     await expect(page.getByRole('alert')).toBeVisible({ timeout: 10_000 });
     const alertText = await page.getByRole('alert').innerText();
     expect(alertText.toLowerCase()).not.toMatch(/not found|does not exist|no such/);
@@ -204,11 +220,9 @@ test.describe('Live login / logout / storage', () => {
     });
 
     await page.goto('/auth/login');
-    await openLanguageMenu(page);
-    await page.getByRole('menuitem', { name: /English/i }).click();
-    await page.locator('input[formcontrolname="username"]').fill(ADMIN_EMAIL);
-    await page.locator('input[name="password"], input[formcontrolname="password"]').fill(ADMIN_PASSWORD);
-    await page.locator('button[type="submit"]').click();
+    await switchToEnglish(page);
+    await fillLoginForm(page, ADMIN_EMAIL, ADMIN_PASSWORD);
+    await submitLogin(page);
     await page.waitForURL(/\/dashboard/, { timeout: 20_000 });
     await expect(page.locator('[data-testid="language-switcher"]')).toBeVisible({ timeout: 20_000 });
     await expect(page.locator('[data-testid="theme-switcher"]')).toBeVisible();
@@ -265,11 +279,9 @@ test.describe('Live admin surfaces accessibility', () => {
 
   test('users, roles, permissions, profile security pages axe', async ({ page }) => {
     await page.goto('/auth/login');
-    await openLanguageMenu(page);
-    await page.getByRole('menuitem', { name: /English/i }).click();
-    await page.locator('input[formcontrolname="username"]').fill(ADMIN_EMAIL);
-    await page.locator('input[name="password"], input[formcontrolname="password"]').fill(ADMIN_PASSWORD);
-    await page.locator('button[type="submit"]').click();
+    await switchToEnglish(page);
+    await fillLoginForm(page, ADMIN_EMAIL, ADMIN_PASSWORD);
+    await submitLogin(page);
     await page.waitForURL(/\/dashboard/, { timeout: 20_000 });
 
     const paths = ['/users', '/roles', '/permissions', '/profile/security', '/dashboard'];
