@@ -66,9 +66,13 @@ export class PreferencesSyncService {
         };
         this.lastPushedLanguage = language;
         this.lastPushedTheme = mode;
+        // Soft-fail conflicts (optimistic lock / concurrent preference writes).
         this.api.updatePreferences(patch).subscribe({
           error: (err) =>
-            this.logger.info('preferences.sync.failed', { message: (err as Error).message })
+            this.logger.info('preferences.sync.failed', {
+              message: (err as Error).message,
+              status: (err as { status?: number })?.status
+            })
         });
       });
     });

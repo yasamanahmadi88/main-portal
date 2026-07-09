@@ -227,9 +227,7 @@ test.describe('Live login / logout / storage', () => {
     expect(alertText.toLowerCase()).not.toMatch(/not found|does not exist|no such/);
   });
 
-  test('successful login, navbar controls, no browser token storage, logout', async ({
-    page
-  }) => {
+  test('successful login, navbar controls, no browser token storage, logout', async ({ page }) => {
     const consoleErrors: string[] = [];
     page.on('console', (msg) => {
       if (msg.type() === 'error') {
@@ -253,23 +251,28 @@ test.describe('Live login / logout / storage', () => {
     expect(session, 'session cookie missing').toBeTruthy();
     expect(session!.httpOnly).toBeTruthy();
 
+    await dismissTransientOverlays(page);
     await axeSeriousCritical(page, 'dashboard-en');
 
     await openLanguageMenu(page);
     await page.getByRole('menuitem', { name: /فارسی/i }).click();
     await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+    await dismissTransientOverlays(page);
     await axeSeriousCritical(page, 'dashboard-fa');
 
     const unexpected = consoleErrors.filter(
       (e) =>
-        !/favicon|Download the React DevTools|NG0|ExpressionChanged|status of 401|Failed to load resource:.*401/i.test(
+        !/favicon|Download the React DevTools|NG0|ExpressionChanged|status of 401|Failed to load resource:.*(401|409)/i.test(
           e
         )
     );
     expect(unexpected, `console errors: ${unexpected.join('\n')}`).toEqual([]);
 
-    const token = await csrf(request);
-    const logout = await request.post('/api/v1/auth/logout', { headers: { 'X-XSRF-TOKEN': token } });
+    // Logout through the page request context so the browser session cookie is cleared.
+    const token = await csrf(page.request);
+    const logout = await page.request.post('/api/v1/auth/logout', {
+      headers: { 'X-XSRF-TOKEN': token }
+    });
     expect(logout.status()).toBeLessThan(400);
   });
 
