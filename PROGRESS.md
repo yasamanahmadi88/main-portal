@@ -2,9 +2,14 @@
 
 ## Current phase
 
-Phase 3 (backend feature modules) — identity, authentication, MFA, RBAC,
-audit, security events, notification, dashboard, administration modules are
-implemented on a passing test suite.
+Phase 4 (frontend) — Angular 22 portal SPA is implemented end-to-end:
+core services (auth, csrf, i18n, theme, error handling, http interceptors),
+guards, shared UI kit, feature modules (auth flows, dashboard, profile,
+users, roles, permissions, audit, security events, settings), design
+tokens with self-hosted Vazirmatn and CSS-variable theming, Vitest unit
+suite (39 passing), Playwright + axe smoke suite, and ESLint 9 flat
+config all in place. `npm run build`, `npm test`, and `npm run lint` are
+green.
 
 ## Environment
 
@@ -92,12 +97,71 @@ implemented on a passing test suite.
 ## Incomplete
 
 - Architecture/security ADRs and diagrams
-- Full frontend features
 - Docker compose stack for the full application
 - CI workflows
 - Live end-to-end verification against Postgres + Redis containers
 
+## Frontend (Phase 4)
+
+- [x] Angular 22.0.5 scaffold wired for cookie-session auth + `X-XSRF-TOKEN`
+      CSRF (double-submit)
+- [x] `core/` layout — `authentication/`, `authorization/`,
+      `configuration/`, `error-handling/`, `http/` (interceptors +
+      per-feature API clients), `i18n/`, `observability/`, `routing/`,
+      `session/`, `shell/`
+- [x] `AuthService` with signals; no tokens in storage; only
+      language/theme persisted for anonymous users
+- [x] Guards — `authGuard`, `guestGuard`, `permissionGuard`,
+      `mfaChallengeGuard`
+- [x] Error interceptor handling 401/403/409/422/429/5xx with RFC 9457
+      Problem-Details normalisation and toasts
+- [x] `I18nService` (default `fa-IR`, runtime switch `en-US`, sets
+      `<html lang>` + `<html dir>`, CDK Directionality change emitter)
+- [x] `ThemeService` (LIGHT/DARK/SYSTEM, no-flash inline bootstrap in
+      `index.html`, `prefers-color-scheme` listener)
+- [x] Preference sync API when authenticated (`PreferencesSyncService`)
+- [x] App shell with sidenav, topbar, language/theme/user menus and
+      notification-panel placeholder
+- [x] Design-token SCSS (`_tokens.scss`, `_fonts.scss`,
+      `_utilities.scss`) with logical CSS properties
+- [x] Self-hosted **Vazirmatn** OFL (5 weights) with a curated fallback
+      stack — **no remote CDN at runtime**
+- [x] Auth UI — login (two-column desktop, form-first mobile), forgot
+      password, reset password, MFA challenge, access denied, session
+      expired, maintenance, 404, all with language + theme controls
+- [x] Portal features (functional, wired to API clients):
+      dashboard, profile (edit / password / MFA / sessions), users
+      admin (list / detail / create / edit / role assign / actions),
+      roles (list / detail / create / edit) + RTL-aware permission
+      matrix, permissions list, audit list/detail with integrity
+      verification, security-events list with acknowledge, settings
+- [x] Shared UI: button, input, password-input (show/hide + CapsLock),
+      select, table, pagination, dialog/confirm, snackbar wrapper,
+      skeleton, empty-state, error-state, page-header, breadcrumb,
+      status-badge, permission-matrix
+- [x] i18n JSON bundles for `common`, `validation`, `navigation`,
+      `authentication`, `dashboard`, `profile`, `users`, `roles`,
+      `permissions`, `audit`, `security-events`, `settings` in `fa-IR`
+      and `en-US` — parity checked by a Vitest test
+- [x] Unit tests (Vitest, 39 passing):
+      `CsrfService` + `csrfInterceptor`, `AuthService`, `guards`,
+      `I18nService` (lang/dir), `ThemeService`, and translation parity
+- [x] Playwright + `@axe-core/playwright` smoke suite:
+      login renders, language toggle, theme toggle, axe scan; suite
+      self-skips when the dev server isn't running
+- [x] ESLint 9 flat config (`eslint.config.mjs`) with
+      `angular-eslint` + `typescript-eslint`; `npm run lint` passes
+      (warnings only)
+- [x] `proxy.conf.json` — `ng serve` proxies `/api` to
+      `http://localhost:8080` with cookie domain/path rewrites
+- [x] `package.json` scripts: `start`, `build`, `build:dev`, `watch`,
+      `test`, `test:watch`, `lint`, `lint:fix`, `format`, `e2e`,
+      `e2e:install`
+- [x] `npm run build` → success (main 680 kB, ~156 kB gzip)
+- [x] `npm test` → 39/39 passing
+- [x] `npm run lint` → 0 errors, 6 non-blocking warnings
+
 ## Exact next action
 
-Move to Phase 4 — frontend feature modules (auth, users, roles, dashboard),
-then Docker Compose + CI wiring.
+Move to Phase 5 — Docker Compose (backend + Postgres + Redis + frontend
+static server) and CI workflows for lint/test/build.
