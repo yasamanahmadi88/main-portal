@@ -1,0 +1,170 @@
+// Design tokens exposed as CSS custom properties.
+// Tokens are the single source of truth for color, spacing, radius,
+// elevation, motion, and typography across the app. Light and dark
+// palettes both reference the same semantic tokens so components
+// only bind to `--app-*` values.
+
+:root {
+  // Motion
+  --app-motion-duration-fast: 120ms;
+  --app-motion-duration-base: 200ms;
+  --app-motion-duration-slow: 320ms;
+  --app-motion-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --app-motion-ease-emphasized: cubic-bezier(0.3, 0, 0, 1);
+
+  // Radii
+  --app-radius-xs: 4px;
+  --app-radius-sm: 8px;
+  --app-radius-md: 12px;
+  --app-radius-lg: 16px;
+  --app-radius-xl: 24px;
+  --app-radius-pill: 999px;
+
+  // Spacing scale (4px based)
+  --app-space-0: 0;
+  --app-space-1: 4px;
+  --app-space-2: 8px;
+  --app-space-3: 12px;
+  --app-space-4: 16px;
+  --app-space-5: 20px;
+  --app-space-6: 24px;
+  --app-space-8: 32px;
+  --app-space-10: 40px;
+  --app-space-12: 48px;
+  --app-space-16: 64px;
+  --app-space-20: 80px;
+
+  // Typography scale
+  --app-font-family-base:
+    'Vazirmatn', 'Segoe UI', 'Tahoma', 'Noto Sans Arabic', 'Noto Sans', 'Helvetica Neue',
+    Helvetica, Arial, sans-serif;
+  --app-font-family-mono: 'JetBrains Mono', 'SFMono-Regular', 'Menlo', 'Consolas', monospace;
+
+  --app-font-size-xs: 0.75rem;   // 12
+  --app-font-size-sm: 0.875rem;  // 14
+  --app-font-size-md: 1rem;      // 16
+  --app-font-size-lg: 1.125rem;  // 18
+  --app-font-size-xl: 1.25rem;   // 20
+  --app-font-size-2xl: 1.5rem;   // 24
+  --app-font-size-3xl: 1.875rem; // 30
+  --app-font-size-4xl: 2.25rem;  // 36
+
+  --app-line-height-tight: 1.2;
+  --app-line-height-base: 1.5;
+  --app-line-height-relaxed: 1.75;
+
+  // Focus ring
+  --app-focus-ring-width: 2px;
+  --app-focus-ring-offset: 2px;
+
+  // Container widths
+  --app-container-narrow: 480px;
+  --app-container-medium: 720px;
+  --app-container-wide: 1120px;
+
+  // Layout
+  --app-sidenav-width: 264px;
+  --app-sidenav-width-collapsed: 72px;
+  --app-topbar-height: 60px;
+
+  // Light palette (default)
+  color-scheme: light;
+  --app-color-background: #f6f7fb;
+  --app-color-surface: #ffffff;
+  --app-color-surface-raised: #ffffff;
+  --app-color-surface-sunken: #eef0f7;
+  --app-color-surface-inverse: #0f172a;
+  --app-color-outline: #d5d9e2;
+  --app-color-outline-strong: #a2acbe;
+  --app-color-divider: #e6e9f0;
+  --app-color-text: #16233d;
+  --app-color-text-secondary: #4a566b;
+  --app-color-text-muted: #7684a0;
+  --app-color-text-inverse: #f5f7fb;
+  --app-color-link: #2350c8;
+  --app-color-link-hover: #17399a;
+
+  --app-color-primary: #3055e6;
+  --app-color-primary-hover: #2444c8;
+  --app-color-primary-active: #1c3aa8;
+  --app-color-primary-soft: #e5ecff;
+  --app-color-on-primary: #ffffff;
+
+  --app-color-accent: #7b3fe4;
+  --app-color-accent-soft: #efe6ff;
+  --app-color-on-accent: #ffffff;
+
+  --app-color-success: #187a3a;
+  --app-color-success-soft: #dff5e6;
+  --app-color-on-success: #ffffff;
+
+  --app-color-warning: #a15c00;
+  --app-color-warning-soft: #ffefcc;
+  --app-color-on-warning: #201200;
+
+  --app-color-danger: #b3261e;
+  --app-color-danger-soft: #ffe4e2;
+  --app-color-on-danger: #ffffff;
+
+  --app-color-info: #0d6b8a;
+  --app-color-info-soft: #d8f0f9;
+  --app-color-on-info: #ffffff;
+
+  --app-shadow-1: 0 1px 2px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.04);
+  --app-shadow-2: 0 4px 12px rgba(15, 23, 42, 0.08), 0 2px 4px rgba(15, 23, 42, 0.06);
+  --app-shadow-3: 0 12px 32px rgba(15, 23, 42, 0.12), 0 4px 8px rgba(15, 23, 42, 0.08);
+
+  // Auth branding
+  --app-brand-gradient: radial-gradient(120% 120% at 0% 0%, #3055e6 0%, #7b3fe4 40%, #221a4a 100%);
+}
+
+// Dark theme
+[data-theme='dark'] {
+  color-scheme: dark;
+  --app-color-background: #0d1220;
+  --app-color-surface: #141b2d;
+  --app-color-surface-raised: #1b2338;
+  --app-color-surface-sunken: #0a0f1c;
+  --app-color-surface-inverse: #f5f7fb;
+  --app-color-outline: #2b3550;
+  --app-color-outline-strong: #45516f;
+  --app-color-divider: #232c46;
+  --app-color-text: #eef1f8;
+  --app-color-text-secondary: #b7c0d5;
+  --app-color-text-muted: #8892ad;
+  --app-color-text-inverse: #0f172a;
+  --app-color-link: #90a8ff;
+  --app-color-link-hover: #b5c4ff;
+
+  --app-color-primary: #6d87ff;
+  --app-color-primary-hover: #8ba0ff;
+  --app-color-primary-active: #a4b5ff;
+  --app-color-primary-soft: rgba(109, 135, 255, 0.16);
+  --app-color-on-primary: #0d1220;
+
+  --app-color-accent: #b394ff;
+  --app-color-accent-soft: rgba(179, 148, 255, 0.16);
+  --app-color-on-accent: #17102b;
+
+  --app-color-success: #5ce194;
+  --app-color-success-soft: rgba(92, 225, 148, 0.14);
+  --app-color-on-success: #06210f;
+
+  --app-color-warning: #ffcc66;
+  --app-color-warning-soft: rgba(255, 204, 102, 0.16);
+  --app-color-on-warning: #241800;
+
+  --app-color-danger: #ff6b62;
+  --app-color-danger-soft: rgba(255, 107, 98, 0.16);
+  --app-color-on-danger: #200404;
+
+  --app-color-info: #61c8e6;
+  --app-color-info-soft: rgba(97, 200, 230, 0.16);
+  --app-color-on-info: #02202a;
+
+  --app-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --app-shadow-2: 0 6px 18px rgba(0, 0, 0, 0.5);
+  --app-shadow-3: 0 20px 42px rgba(0, 0, 0, 0.55);
+
+  --app-brand-gradient: radial-gradient(120% 120% at 0% 0%, #4864ff 0%, #7b3fe4 45%, #0d1220 100%);
+}

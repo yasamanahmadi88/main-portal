@@ -1,0 +1,54 @@
+<app-page-header [title]="'settings.title'" [subtitle]="'settings.subtitle'" />
+
+@if (loading()) {
+  <div class="app-card">
+    <app-skeleton height="16px" width="60%" />
+    <app-skeleton height="16px" width="40%" />
+  </div>
+} @else if (error()) {
+  <app-error-state (retry)="load()" />
+} @else {
+  <form class="app-card settings-form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <div class="settings-form__grid">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'settings.fields.defaultLanguage' | translate }}</mat-label>
+        <mat-select formControlName="defaultLanguage">
+          <mat-option value="fa-IR">فارسی</mat-option>
+          <mat-option value="en-US">English</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'settings.fields.defaultTheme' | translate }}</mat-label>
+        <mat-select formControlName="defaultTheme">
+          <mat-option value="LIGHT">{{ 'common.theme.light' | translate }}</mat-option>
+          <mat-option value="DARK">{{ 'common.theme.dark' | translate }}</mat-option>
+          <mat-option value="SYSTEM">{{ 'common.theme.system' | translate }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'settings.fields.sessionTimeoutMinutes' | translate }}</mat-label>
+        <input matInput type="number" formControlName="sessionTimeoutMinutes" min="5" max="1440" />
+        <mat-hint>{{ 'settings.hints.sessionTimeout' | translate }}</mat-hint>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'settings.fields.auditRetentionDays' | translate }}</mat-label>
+        <input matInput type="number" formControlName="auditRetentionDays" min="30" />
+        <mat-hint>{{ 'settings.hints.auditRetention' | translate }}</mat-hint>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'settings.fields.loginRateLimitPerMinute' | translate }}</mat-label>
+        <input matInput type="number" formControlName="loginRateLimitPerMinute" min="1" />
+        <mat-hint>{{ 'settings.hints.loginRate' | translate }}</mat-hint>
+      </mat-form-field>
+      <mat-checkbox formControlName="mfaRequiredForAdmins" color="primary">
+        {{ 'settings.fields.mfaRequiredForAdmins' | translate }}
+      </mat-checkbox>
+    </div>
+    <div class="settings-form__actions">
+      <button mat-flat-button color="primary" type="submit" [disabled]="submitting() || form.invalid">
+        <mat-icon aria-hidden="true">save</mat-icon>
+        <span>{{ (submitting() ? 'common.actions.saving' : 'settings.actions.save') | translate }}</span>
+      </button>
+    </div>
+  </form>
+}

@@ -1,0 +1,43 @@
+<form class="app-card profile-form" [formGroup]="form" (ngSubmit)="save()" novalidate>
+  <div class="profile-form__grid">
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'profile.overview.usernameLabel' | translate }}</mat-label>
+      <input matInput type="text" [value]="user()?.username ?? ''" disabled />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'profile.overview.displayNameLabel' | translate }}</mat-label>
+      <input matInput type="text" formControlName="displayName" />
+      @if (form.controls.displayName.hasError('required')) {
+        <mat-error>{{ 'validation.required' | translate }}</mat-error>
+      }
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'profile.overview.emailLabel' | translate }}</mat-label>
+      <input matInput type="email" formControlName="email" />
+      @if (form.controls.email.hasError('email')) {
+        <mat-error>{{ 'validation.email' | translate }}</mat-error>
+      }
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'profile.overview.languageLabel' | translate }}</mat-label>
+      <mat-select formControlName="language">
+        <mat-option value="fa-IR">فارسی</mat-option>
+        <mat-option value="en-US">English</mat-option>
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'profile.overview.themeLabel' | translate }}</mat-label>
+      <mat-select formControlName="theme">
+        <mat-option value="LIGHT">{{ 'common.theme.light' | translate }}</mat-option>
+        <mat-option value="DARK">{{ 'common.theme.dark' | translate }}</mat-option>
+        <mat-option value="SYSTEM">{{ 'common.theme.system' | translate }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
+  <div class="profile-form__actions">
+    <button mat-flat-button color="primary" type="submit" [disabled]="submitting() || form.invalid">
+      <mat-icon aria-hidden="true">save</mat-icon>
+      <span>{{ (submitting() ? 'common.actions.saving' : 'common.actions.save') | translate }}</span>
+    </button>
+  </div>
+</form>

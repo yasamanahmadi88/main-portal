@@ -1,0 +1,120 @@
+// Shared styles for the two-column auth pages (login, forgot, reset, mfa, …).
+
+@mixin auth-card {
+  :host {
+    display: block;
+    inline-size: 100%;
+  }
+
+  .auth-card {
+    max-inline-size: 420px;
+    margin-inline: auto;
+    padding: var(--app-space-8);
+    background-color: var(--app-color-surface);
+    border-radius: var(--app-radius-xl);
+    border: 1px solid var(--app-color-outline);
+    box-shadow: var(--app-shadow-2);
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-space-4);
+  }
+
+  .auth-card header h1 {
+    margin: 0;
+    font-size: var(--app-font-size-2xl);
+  }
+
+  .auth-card header p {
+    margin: var(--app-space-1) 0 0;
+    color: var(--app-color-text-secondary);
+  }
+
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-space-2);
+  }
+
+  .auth-card__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--app-space-2);
+    flex-wrap: wrap;
+    margin-block-start: var(--app-space-2);
+  }
+
+  .auth-card__link {
+    font-weight: 500;
+  }
+
+  .auth-card__submit {
+    block-size: 44px;
+    border-radius: var(--app-radius-md);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--app-space-2);
+    margin-block-start: var(--app-space-2);
+  }
+
+  .auth-card__alt {
+    align-self: flex-start;
+    margin-block-start: var(--app-space-1);
+  }
+
+  .auth-card__icon {
+    font-size: 32px;
+    width: 32px;
+    height: 32px;
+    color: var(--app-color-primary);
+  }
+
+  .auth-card__footer {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    color: var(--app-color-text-secondary);
+    font-size: var(--app-font-size-sm);
+    padding-block-start: var(--app-space-4);
+    border-block-start: 1px solid var(--app-color-divider);
+  }
+
+  .auth-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--app-space-2);
+    padding: var(--app-space-3);
+    background-color: var(--app-color-danger-soft);
+    color: var(--app-color-text);
+    border: 1px solid color-mix(in oklab, var(--app-color-danger) 30%, transparent);
+    border-radius: var(--app-radius-md);
+    font-size: var(--app-font-size-sm);
+  }
+
+  .auth-alert mat-icon {
+    color: var(--app-color-danger);
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+
+  .auth-alert--success {
+    background-color: var(--app-color-success-soft);
+    border-color: color-mix(in oklab, var(--app-color-success) 30%, transparent);
+  }
+
+  .auth-alert--success mat-icon {
+    color: var(--app-color-success);
+  }
+
+  @media (max-width: 640px) {
+    .auth-card {
+      padding: var(--app-space-5);
+      border: none;
+      box-shadow: none;
+      background: transparent;
+    }
+  }
+}

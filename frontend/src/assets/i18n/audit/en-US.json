@@ -1,0 +1,39 @@
+{
+  "audit": {
+    "title": "Audit log",
+    "subtitle": "Immutable, hash-chained record of everything that happened.",
+    "filters": {
+      "action": "Action",
+      "actor": "Actor",
+      "outcome": "Outcome",
+      "from": "From",
+      "to": "To"
+    },
+    "columns": {
+      "when": "When",
+      "actor": "Actor",
+      "action": "Action",
+      "resource": "Resource",
+      "outcome": "Outcome",
+      "ip": "IP address"
+    },
+    "outcome": {
+      "SUCCESS": "Success",
+      "FAILURE": "Failure"
+    },
+    "detail": {
+      "title": "Audit event",
+      "metadata": "Metadata",
+      "hashChain": "Hash chain",
+      "previousHash": "Previous hash",
+      "hash": "Hash"
+    },
+    "actions": {
+      "export": "Export",
+      "verifyIntegrity": "Verify integrity",
+      "verifySuccess": "Verified {{count}} events. Chain is intact.",
+      "verifyFailure": "Chain verification failed at event {{id}}."
+    },
+    "empty": "No audit entries in this range."
+  }
+}

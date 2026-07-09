@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "title": "Permissions",
+    "subtitle": "Catalog of granular permissions available for assignment to roles.",
+    "matrix": {
+      "title": "Permission matrix",
+      "subtitle": "Rows are permissions; columns are roles. Toggle to (dis)associate."
+    },
+    "headers": {
+      "permission": "Permission",
+      "module": "Module",
+      "action": "Action",
+      "description": "Description",
+      "system": "System"
+    },
+    "empty": "No permissions available."
+  }
+}

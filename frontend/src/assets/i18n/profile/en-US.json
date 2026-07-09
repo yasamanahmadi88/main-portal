@@ -1,0 +1,53 @@
+{
+  "profile": {
+    "title": "My profile",
+    "subtitle": "Update your information, credentials, and devices.",
+    "tabs": {
+      "overview": "Overview",
+      "security": "Security & MFA",
+      "sessions": "Active sessions"
+    },
+    "overview": {
+      "displayNameLabel": "Display name",
+      "emailLabel": "Email address",
+      "usernameLabel": "Username",
+      "languageLabel": "Preferred language",
+      "themeLabel": "Preferred theme",
+      "saveSuccess": "Your profile was updated."
+    },
+    "security": {
+      "changePasswordTitle": "Change password",
+      "currentPasswordLabel": "Current password",
+      "newPasswordLabel": "New password",
+      "confirmPasswordLabel": "Confirm new password",
+      "changePasswordAction": "Update password",
+      "changePasswordSuccess": "Password updated successfully.",
+      "mfaTitle": "Multi-factor authentication",
+      "mfaEnabledDescription": "MFA is active. Devices below are trusted for verification.",
+      "mfaDisabledDescription": "Add an authenticator app for stronger protection of your account.",
+      "enrollTotp": "Set up authenticator app",
+      "removeFactor": "Remove factor",
+      "recoveryCodesTitle": "Recovery codes",
+      "recoveryCodesDescription": "Store these codes in a safe place. Each one may be used once.",
+      "regenerateRecoveryCodes": "Regenerate recovery codes",
+      "regenerateSuccess": "New recovery codes were generated.",
+      "confirmDeleteFactor": "Remove this MFA factor?",
+      "confirmDeleteFactorDetail": "Removing this factor will require you to re-enroll before signing in again.",
+      "totpSetupInstructions": "Scan the QR code with your authenticator app, then enter the 6-digit code it shows.",
+      "secretLabel": "Secret",
+      "codeLabel": "Verification code",
+      "confirmEnrollment": "Confirm enrollment",
+      "enrollmentSuccess": "Authenticator activated. Save the recovery codes below — they will not be shown again."
+    },
+    "sessions": {
+      "title": "Active sessions",
+      "description": "Devices with a signed-in session on your account.",
+      "current": "This device",
+      "revoke": "Revoke",
+      "revokeAll": "Sign out of all other devices",
+      "revokeSuccess": "Session revoked.",
+      "revokeAllSuccess": "Signed out of {{count}} other sessions.",
+      "empty": "You have no active sessions besides this one."
+    }
+  }
+}

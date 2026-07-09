@@ -1,0 +1,68 @@
+@if (loading()) {
+  <app-page-header [title]="'common.labels.loading'"></app-page-header>
+  <div class="app-card">
+    <app-skeleton height="24px" width="40%" />
+    <app-skeleton height="16px" width="80%" />
+  </div>
+} @else if (error() || !role()) {
+  <app-error-state [title]="'common.errors.title'" (retry)="roleId() && load(roleId()!)" />
+} @else {
+  <app-page-header [title]="role()!.name" [subtitle]="role()!.description ?? null">
+    <div actions>
+      <a mat-stroked-button routerLink="/roles">
+        <mat-icon aria-hidden="true">arrow_back</mat-icon>
+        <span>{{ 'common.actions.back' | translate }}</span>
+      </a>
+      @if (!role()!.system) {
+        <a mat-stroked-button [routerLink]="['/roles', role()!.id, 'edit']">
+          <mat-icon aria-hidden="true">edit</mat-icon>
+          <span>{{ 'common.actions.edit' | translate }}</span>
+        </a>
+        <button mat-stroked-button color="warn" type="button" (click)="remove()">
+          <mat-icon aria-hidden="true">delete</mat-icon>
+          <span>{{ 'common.actions.delete' | translate }}</span>
+        </button>
+      }
+    </div>
+  </app-page-header>
+
+  <div class="app-card">
+    <div class="role-detail__row">
+      <div>
+        <div class="role-detail__label">{{ 'roles.columns.code' | translate }}</div>
+        <div class="role-detail__value"><code>{{ role()!.code }}</code></div>
+      </div>
+      <div>
+        <div class="role-detail__label">{{ 'roles.columns.system' | translate }}</div>
+        @if (role()!.system) {
+          <app-status-badge tone="warning" label="common.labels.system" />
+        } @else {
+          <app-status-badge tone="neutral" label="common.labels.custom" />
+        }
+      </div>
+      <div>
+        <div class="role-detail__label">{{ 'common.labels.createdAt' | translate }}</div>
+        <div class="role-detail__value">{{ role()!.createdAt | date: 'medium' }}</div>
+      </div>
+      <div>
+        <div class="role-detail__label">{{ 'common.labels.updatedAt' | translate }}</div>
+        <div class="role-detail__value">{{ role()!.updatedAt | date: 'medium' }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="app-card">
+    <h2>{{ 'roles.detail.permissions' | translate }}</h2>
+    @if (role()!.system) {
+      <p class="role-detail__hint">{{ 'roles.detail.systemRoleLocked' | translate }}</p>
+    }
+    <ul class="role-detail__permissions">
+      @for (permission of role()!.permissions; track permission.code) {
+        <li>
+          <code>{{ permission.code }}</code>
+          <span class="role-detail__perm-desc">{{ permission.description }}</span>
+        </li>
+      }
+    </ul>
+  </div>
+}

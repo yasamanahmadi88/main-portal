@@ -1,0 +1,39 @@
+{
+  "audit": {
+    "title": "گزارش حسابرسی",
+    "subtitle": "ثبت تغییرناپذیر و زنجیره‌ای همه‌ی اتفاقات.",
+    "filters": {
+      "action": "کنش",
+      "actor": "کاربر",
+      "outcome": "نتیجه",
+      "from": "از",
+      "to": "تا"
+    },
+    "columns": {
+      "when": "زمان",
+      "actor": "کاربر",
+      "action": "کنش",
+      "resource": "منبع",
+      "outcome": "نتیجه",
+      "ip": "نشانی IP"
+    },
+    "outcome": {
+      "SUCCESS": "موفق",
+      "FAILURE": "ناموفق"
+    },
+    "detail": {
+      "title": "رویداد حسابرسی",
+      "metadata": "متادیتا",
+      "hashChain": "زنجیره‌ی هش",
+      "previousHash": "هش پیشین",
+      "hash": "هش"
+    },
+    "actions": {
+      "export": "برون‌بری",
+      "verifyIntegrity": "بررسی یکپارچگی",
+      "verifySuccess": "بررسی {{count}} رویداد انجام شد. زنجیره سالم است.",
+      "verifyFailure": "بررسی زنجیره در رویداد {{id}} ناموفق بود."
+    },
+    "empty": "در این بازه رویداد حسابرسی‌ای موجود نیست."
+  }
+}

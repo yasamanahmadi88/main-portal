@@ -1,0 +1,42 @@
+.audit-detail dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--app-space-3);
+  margin: 0;
+}
+.audit-detail dt {
+  color: var(--app-color-text-secondary);
+  font-size: var(--app-font-size-sm);
+}
+.audit-detail dd {
+  margin: var(--app-space-1) 0 0;
+  overflow-wrap: anywhere;
+}
+.audit-detail__pre {
+  background: var(--app-color-surface-sunken);
+  padding: var(--app-space-3);
+  border-radius: var(--app-radius-md);
+  overflow: auto;
+  font-family: var(--app-font-family-mono);
+  font-size: var(--app-font-size-xs);
+  border: 1px solid var(--app-color-outline);
+}
+.audit-detail__hashes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-2);
+}
+.audit-detail__hashes > div {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: var(--app-space-2);
+  align-items: center;
+}
+.audit-detail__hashes code {
+  font-family: var(--app-font-family-mono);
+  font-size: var(--app-font-size-xs);
+  background: var(--app-color-surface-sunken);
+  padding: 2px 6px;
+  border-radius: var(--app-radius-sm);
+  overflow-wrap: anywhere;
+}

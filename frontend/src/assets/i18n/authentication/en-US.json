@@ -1,0 +1,81 @@
+{
+  "authentication": {
+    "branding": {
+      "tagline": "One place for identity, access, and audit — designed for your team, in your language.",
+      "points": {
+        "security": "Hardened session security & MFA",
+        "locale": "Persian and English, fully bidirectional",
+        "accessibility": "Accessible components (WCAG 2.2 AA)"
+      }
+    },
+    "login": {
+      "title": "Sign in",
+      "subtitle": "Use your organizational account to continue.",
+      "usernameLabel": "Username or email",
+      "passwordLabel": "Password",
+      "rememberDevice": "Trust this device for 14 days",
+      "forgot": "Forgot your password?",
+      "submit": "Sign in",
+      "noAccount": "Need help getting an account?",
+      "contactAdmin": "Contact your administrator"
+    },
+    "forgotPassword": {
+      "title": "Reset your password",
+      "subtitle": "Enter your account email and we'll send you a reset link.",
+      "emailLabel": "Account email",
+      "submit": "Send reset link",
+      "success": "If an account matches that email, we'll send instructions shortly.",
+      "backToSignIn": "Back to sign in"
+    },
+    "resetPassword": {
+      "title": "Choose a new password",
+      "subtitle": "Enter the reset token from your email and set a strong password.",
+      "tokenLabel": "Reset token",
+      "newPasswordLabel": "New password",
+      "confirmLabel": "Confirm new password",
+      "submit": "Update password",
+      "success": "Password updated. You can now sign in.",
+      "backToSignIn": "Back to sign in"
+    },
+    "mfa": {
+      "title": "Two-step verification",
+      "subtitle": "Enter the 6-digit code from your authenticator app.",
+      "codeLabel": "Verification code",
+      "submit": "Verify",
+      "useRecovery": "Use a recovery code instead",
+      "useAuthenticator": "Use my authenticator app",
+      "recoveryCodeLabel": "Recovery code",
+      "recoverySubmit": "Sign in with recovery code",
+      "expiresIn": "This challenge expires {{time}}",
+      "resend": "Didn't get a code?"
+    },
+    "sessionExpired": {
+      "title": "Session expired",
+      "description": "For your security we signed you out. Please sign in again to continue.",
+      "action": "Sign in again"
+    },
+    "accessDenied": {
+      "title": "Access denied",
+      "description": "You don't have permission to view this page. If you believe this is a mistake, contact your administrator.",
+      "backHome": "Back to dashboard"
+    },
+    "maintenance": {
+      "title": "We're doing a quick tune-up",
+      "description": "The portal is temporarily unavailable while we deploy an update. We'll be back shortly.",
+      "retry": "Try again"
+    },
+    "hints": {
+      "capsLock": "Caps Lock is on"
+    },
+    "errors": {
+      "invalidCredentials": "Username or password is incorrect.",
+      "accountLocked": "This account is locked. Contact your administrator.",
+      "mfaRequired": "Additional verification is required.",
+      "mfaInvalid": "The code you entered is invalid or already used.",
+      "mfaExpired": "This verification challenge has expired. Please sign in again.",
+      "sessionExpired": "Your session has expired.",
+      "forbidden": "Access denied.",
+      "resetTokenInvalid": "The reset link is invalid or expired."
+    }
+  }
+}

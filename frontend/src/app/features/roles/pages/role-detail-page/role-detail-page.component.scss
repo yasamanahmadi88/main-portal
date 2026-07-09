@@ -1,0 +1,51 @@
+.role-detail__row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--app-space-4);
+}
+
+.role-detail__label {
+  color: var(--app-color-text-secondary);
+  font-size: var(--app-font-size-sm);
+  margin-block-end: var(--app-space-1);
+}
+
+.role-detail__value code {
+  font-family: var(--app-font-family-mono);
+  background: var(--app-color-surface-sunken);
+  padding: 2px 6px;
+  border-radius: var(--app-radius-sm);
+}
+
+.role-detail__hint {
+  color: var(--app-color-text-secondary);
+  font-style: italic;
+}
+
+.role-detail__permissions {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--app-space-2);
+}
+
+.role-detail__permissions li {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-1);
+  padding: var(--app-space-2) var(--app-space-3);
+  border: 1px solid var(--app-color-outline);
+  border-radius: var(--app-radius-md);
+}
+
+.role-detail__permissions code {
+  font-family: var(--app-font-family-mono);
+  font-weight: 600;
+}
+
+.role-detail__perm-desc {
+  color: var(--app-color-text-secondary);
+  font-size: var(--app-font-size-sm);
+}

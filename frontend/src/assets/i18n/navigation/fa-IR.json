@@ -1,0 +1,14 @@
+{
+  "navigation": {
+    "primary": "منوی اصلی",
+    "toggle": "باز/بسته کردن منو",
+    "dashboard": "داشبورد",
+    "users": "کاربران",
+    "roles": "نقش‌ها",
+    "permissions": "دسترسی‌ها",
+    "audit": "گزارش حسابرسی",
+    "securityEvents": "رویدادهای امنیتی",
+    "settings": "تنظیمات",
+    "profile": "نمایه من"
+  }
+}

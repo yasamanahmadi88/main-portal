@@ -1,0 +1,138 @@
+<section class="app-card">
+  <h2>{{ 'profile.security.changePasswordTitle' | translate }}</h2>
+  <form class="security-form" [formGroup]="passwordForm" (ngSubmit)="changePassword()" novalidate>
+    <app-password-input
+      formControlName="currentPassword"
+      [label]="'profile.security.currentPasswordLabel'"
+      autocomplete="current-password"
+      name="current-password"
+    />
+    <app-password-input
+      formControlName="newPassword"
+      [label]="'profile.security.newPasswordLabel'"
+      autocomplete="new-password"
+      name="new-password"
+    >
+      @if (passwordForm.controls.newPassword.touched && passwordForm.controls.newPassword.hasError('minlength')) {
+        <mat-error>{{ 'validation.passwordStrength' | translate }}</mat-error>
+      }
+    </app-password-input>
+    <app-password-input
+      formControlName="confirmPassword"
+      [label]="'profile.security.confirmPasswordLabel'"
+      autocomplete="new-password"
+      name="confirm-password"
+    >
+      @if (passwordForm.controls.confirmPassword.hasError('mismatch') && passwordForm.controls.confirmPassword.touched) {
+        <mat-error>{{ 'validation.mismatch' | translate }}</mat-error>
+      }
+    </app-password-input>
+    <div class="security-form__actions">
+      <button
+        mat-flat-button
+        color="primary"
+        type="submit"
+        [disabled]="changingPassword() || passwordForm.invalid"
+      >
+        {{ 'profile.security.changePasswordAction' | translate }}
+      </button>
+    </div>
+  </form>
+</section>
+
+<section class="app-card">
+  <h2>{{ 'profile.security.mfaTitle' | translate }}</h2>
+  @if (factors().length === 0) {
+    <p>{{ 'profile.security.mfaDisabledDescription' | translate }}</p>
+  } @else {
+    <p>{{ 'profile.security.mfaEnabledDescription' | translate }}</p>
+    <ul class="mfa-list">
+      @for (factor of factors(); track factor.id) {
+        <li>
+          <div class="mfa-list__body">
+            <div class="mfa-list__name">{{ factor.name }}</div>
+            <div class="mfa-list__meta">
+              <app-status-badge
+                [tone]="factor.enabled ? 'success' : 'warning'"
+                [label]="factor.enabled ? 'common.labels.on' : 'common.labels.off'"
+              />
+              <span>{{ factor.type }}</span>
+            </div>
+          </div>
+          <button mat-stroked-button color="warn" type="button" (click)="removeFactor(factor)">
+            <mat-icon aria-hidden="true">delete</mat-icon>
+            <span>{{ 'profile.security.removeFactor' | translate }}</span>
+          </button>
+        </li>
+      }
+    </ul>
+  }
+
+  @if (!setup()) {
+    <button
+      mat-flat-button
+      color="primary"
+      type="button"
+      class="mfa-enroll"
+      (click)="startTotpEnrollment()"
+      [disabled]="enrollingMfa()"
+    >
+      <mat-icon aria-hidden="true">qr_code_2</mat-icon>
+      <span>{{ 'profile.security.enrollTotp' | translate }}</span>
+    </button>
+  } @else {
+    <div class="mfa-setup">
+      <p>{{ 'profile.security.totpSetupInstructions' | translate }}</p>
+      @if (setup()!.qrCodeSvg; as qr) {
+        <div class="mfa-setup__qr" [innerHTML]="qr"></div>
+      }
+      <div class="mfa-setup__secret">
+        <span>{{ 'profile.security.secretLabel' | translate }}</span>
+        <code>{{ setup()!.secret }}</code>
+      </div>
+      <form class="mfa-setup__form" [formGroup]="confirmForm" (ngSubmit)="confirmTotpEnrollment()" novalidate>
+        <mat-form-field appearance="outline">
+          <mat-label>{{ 'profile.security.codeLabel' | translate }}</mat-label>
+          <input matInput type="text" inputmode="numeric" formControlName="code" maxlength="8" />
+        </mat-form-field>
+        <button mat-flat-button color="primary" type="submit" [disabled]="confirmingMfa() || confirmForm.invalid">
+          {{ 'profile.security.confirmEnrollment' | translate }}
+        </button>
+      </form>
+    </div>
+  }
+</section>
+
+<section class="app-card">
+  <h2>{{ 'profile.security.recoveryCodesTitle' | translate }}</h2>
+  <p>{{ 'profile.security.recoveryCodesDescription' | translate }}</p>
+  @if (recoveryStatus()) {
+    <p>
+      {{ 'common.labels.notAvailable' | translate }}: {{ recoveryStatus()!.remainingCodes }}
+    </p>
+  }
+  <button mat-stroked-button type="button" (click)="regenerateRecoveryCodes()">
+    <mat-icon aria-hidden="true">autorenew</mat-icon>
+    <span>{{ 'profile.security.regenerateRecoveryCodes' | translate }}</span>
+  </button>
+
+  @if (newRecoveryCodes()) {
+    <div class="recovery-codes" role="region" aria-live="polite">
+      <div class="recovery-codes__toolbar">
+        <button mat-stroked-button type="button" (click)="copyCodes()">
+          <mat-icon aria-hidden="true">content_copy</mat-icon>
+          <span>{{ 'common.actions.copy' | translate }}</span>
+        </button>
+        <button mat-button type="button" (click)="dismissCodes()">
+          <mat-icon aria-hidden="true">close</mat-icon>
+          <span>{{ 'common.actions.close' | translate }}</span>
+        </button>
+      </div>
+      <ul>
+        @for (code of newRecoveryCodes(); track code) {
+          <li><code>{{ code }}</code></li>
+        }
+      </ul>
+    </div>
+  }
+</section>

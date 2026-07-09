@@ -1,0 +1,35 @@
+{
+  "dashboard": {
+    "title": "داشبورد",
+    "subtitle": "نگاهی سریع به وضعیت پرتال شما.",
+    "cards": {
+      "activeUsers": {
+        "title": "کاربران فعال",
+        "description": "کاربران فعال در ۲۴ ساعت گذشته."
+      },
+      "activeSessions": {
+        "title": "نشست‌های فعال",
+        "description": "نشست‌های احرازشده‌ی هم‌زمان."
+      },
+      "unacknowledgedEvents": {
+        "title": "رویدادهای امنیتی بررسی‌نشده",
+        "description": "رویدادهایی که در انتظار بررسی هستند."
+      },
+      "criticalEvents": {
+        "title": "رویدادهای بحرانی",
+        "description": "رویدادهای با شدت بحرانی در ۲۴ ساعت اخیر."
+      },
+      "auditEventsToday": {
+        "title": "رویدادهای حسابرسی امروز",
+        "description": "اقدامات ثبت‌شده از ابتدای امروز."
+      }
+    },
+    "quickActions": {
+      "title": "اقدامات سریع",
+      "manageUsers": "مدیریت کاربران",
+      "reviewSecurityEvents": "بررسی رویدادهای امنیتی",
+      "openAudit": "مشاهده گزارش حسابرسی"
+    },
+    "empty": "فعلاً چیزی برای نمایش نیست — پس از شروع ترافیک بازگردید."
+  }
+}

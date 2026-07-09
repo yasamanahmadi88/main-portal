@@ -1,0 +1,130 @@
+<app-page-header [title]="'users.title'" [subtitle]="'users.subtitle'">
+  <div actions>
+    <a mat-flat-button color="primary" routerLink="/users/new">
+      <mat-icon aria-hidden="true">person_add</mat-icon>
+      <span>{{ 'users.actions.create' | translate }}</span>
+    </a>
+  </div>
+</app-page-header>
+
+<section class="filters app-card app-card--muted">
+  <mat-form-field appearance="outline" class="filters__search">
+    <mat-label>{{ 'users.filters.search' | translate }}</mat-label>
+    <mat-icon matPrefix aria-hidden="true">search</mat-icon>
+    <input
+      matInput
+      type="search"
+      autocomplete="off"
+      (input)="searchChanged($any($event.target).value)"
+    />
+  </mat-form-field>
+  <mat-form-field appearance="outline">
+    <mat-label>{{ 'users.filters.status' | translate }}</mat-label>
+    <mat-select
+      [value]="status()"
+      (selectionChange)="statusChanged($any($event.value))"
+    >
+      <mat-option value="">{{ 'common.labels.notAvailable' | translate }}</mat-option>
+      @for (s of statusOptions; track s) {
+        <mat-option [value]="s">{{ 'users.status.' + s | translate }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+  <button mat-stroked-button type="button" (click)="reload()">
+    <mat-icon aria-hidden="true">refresh</mat-icon>
+    <span>{{ 'common.actions.refresh' | translate }}</span>
+  </button>
+</section>
+
+@if (state().loading && !state().page) {
+  <div class="skeletons">
+    @for (i of [1,2,3,4,5,6,7,8]; track i) {
+      <div class="skeleton-row">
+        <app-skeleton height="16px" width="20%" />
+        <app-skeleton height="16px" width="30%" />
+        <app-skeleton height="16px" width="15%" />
+        <app-skeleton height="16px" width="20%" />
+        <app-skeleton height="16px" width="15%" />
+      </div>
+    }
+  </div>
+} @else if (state().error) {
+  <app-error-state
+    [title]="'common.errors.title'"
+    [description]="'common.errors.description'"
+    (retry)="reload()"
+  />
+} @else if (state().page && state().page!.content.length === 0) {
+  <app-empty-state icon="person_search" [title]="'users.empty'" />
+} @else if (state().page) {
+  <div class="app-card users-table__card">
+    <div class="app-scroll-shadow">
+      <table mat-table [dataSource]="state().page!.content" matSort (matSortChange)="onSort($event)">
+        <ng-container matColumnDef="user">
+          <th mat-header-cell mat-sort-header="displayName" *matHeaderCellDef>
+            {{ 'users.columns.user' | translate }}
+          </th>
+          <td mat-cell *matCellDef="let user">
+            <a class="user-cell" [routerLink]="['/users', user.id]">
+              <span class="user-cell__name">{{ user.displayName }}</span>
+              <span class="user-cell__handle">{{ '@' + user.username }}</span>
+            </a>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="email">
+          <th mat-header-cell mat-sort-header="email" *matHeaderCellDef>
+            {{ 'users.columns.email' | translate }}
+          </th>
+          <td mat-cell *matCellDef="let user">{{ user.email }}</td>
+        </ng-container>
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef>{{ 'users.columns.status' | translate }}</th>
+          <td mat-cell *matCellDef="let user">
+            <app-status-badge [tone]="statusTone(user.status)" [label]="'users.status.' + user.status" />
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="roles">
+          <th mat-header-cell *matHeaderCellDef>{{ 'users.columns.roles' | translate }}</th>
+          <td mat-cell *matCellDef="let user" class="user-cell__roles">
+            @for (role of user.roles; track role.id) {
+              <app-status-badge tone="primary" [label]="null">
+                {{ role.name }}
+              </app-status-badge>
+            }
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="lastLogin">
+          <th mat-header-cell mat-sort-header="lastLoginAt" *matHeaderCellDef>
+            {{ 'users.columns.lastLogin' | translate }}
+          </th>
+          <td mat-cell *matCellDef="let user">
+            {{ user.lastLoginAt ? (user.lastLoginAt | date: 'medium') : ('common.labels.notAvailable' | translate) }}
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef class="table-actions">
+            {{ 'users.columns.actions' | translate }}
+          </th>
+          <td mat-cell *matCellDef="let user" class="table-actions">
+            <a mat-icon-button [routerLink]="['/users', user.id, 'edit']" [matTooltip]="'common.actions.edit' | translate">
+              <mat-icon aria-hidden="true">edit</mat-icon>
+            </a>
+            <a mat-icon-button [routerLink]="['/users', user.id]" [matTooltip]="'common.actions.view' | translate">
+              <mat-icon aria-hidden="true">chevron_right</mat-icon>
+            </a>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="columns"></tr>
+        <tr mat-row *matRowDef="let row; columns: columns"></tr>
+      </table>
+    </div>
+    <mat-paginator
+      [length]="state().page!.totalElements"
+      [pageIndex]="state().page!.page"
+      [pageSize]="state().page!.size"
+      [pageSizeOptions]="[10, 20, 50, 100]"
+      (page)="onPage($event)"
+    />
+  </div>
+}

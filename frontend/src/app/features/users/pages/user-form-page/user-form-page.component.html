@@ -1,0 +1,71 @@
+<app-page-header
+  [title]="editing() ? 'common.actions.edit' : 'users.actions.create'"
+>
+  <div actions>
+    <a mat-stroked-button routerLink="/users">
+      <mat-icon aria-hidden="true">arrow_back</mat-icon>
+      <span>{{ 'common.actions.back' | translate }}</span>
+    </a>
+  </div>
+</app-page-header>
+
+<form class="app-card user-form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+  <div class="user-form__grid">
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'users.form.usernameLabel' | translate }}</mat-label>
+      <input matInput type="text" formControlName="username" autocomplete="off" />
+      @if (form.controls.username.hasError('required')) {
+        <mat-error>{{ 'validation.required' | translate }}</mat-error>
+      }
+      @if (form.controls.username.hasError('minlength') || form.controls.username.hasError('maxlength')) {
+        <mat-error>{{ 'validation.pattern' | translate }}</mat-error>
+      }
+      @if (fieldErrors()['username']) {
+        <mat-error>{{ fieldErrors()['username'] }}</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'users.form.emailLabel' | translate }}</mat-label>
+      <input matInput type="email" formControlName="email" autocomplete="off" />
+      @if (form.controls.email.hasError('required')) {
+        <mat-error>{{ 'validation.required' | translate }}</mat-error>
+      }
+      @if (form.controls.email.hasError('email')) {
+        <mat-error>{{ 'validation.email' | translate }}</mat-error>
+      }
+      @if (fieldErrors()['email']) {
+        <mat-error>{{ fieldErrors()['email'] }}</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="user-form__full">
+      <mat-label>{{ 'users.form.displayNameLabel' | translate }}</mat-label>
+      <input matInput type="text" formControlName="displayName" />
+      @if (form.controls.displayName.hasError('required')) {
+        <mat-error>{{ 'validation.required' | translate }}</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="user-form__full">
+      <mat-label>{{ 'users.form.rolesLabel' | translate }}</mat-label>
+      <mat-select multiple formControlName="roleIds">
+        @for (role of allRoles(); track role.id) {
+          <mat-option [value]="role.id">{{ role.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    @if (!editing()) {
+      <mat-checkbox formControlName="sendInvite" color="primary">
+        {{ 'users.form.sendInviteLabel' | translate }}
+      </mat-checkbox>
+    }
+  </div>
+  <div class="user-form__actions">
+    <a mat-stroked-button routerLink="/users">{{ 'common.actions.cancel' | translate }}</a>
+    <button mat-flat-button color="primary" type="submit" [disabled]="submitting() || form.invalid">
+      {{ (submitting() ? 'common.actions.saving' : 'common.actions.save') | translate }}
+    </button>
+  </div>
+</form>

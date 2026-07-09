@@ -1,0 +1,79 @@
+<mat-sidenav-container class="app-shell" autosize>
+  <mat-sidenav
+    #sidenav
+    class="app-shell__sidenav"
+    mode="side"
+    [opened]="sidenavOpen()"
+    [attr.aria-label]="'navigation.primary' | translate"
+  >
+    <div class="app-brand">
+      <div class="app-brand__mark" aria-hidden="true">P</div>
+      <div class="app-brand__text">
+        <span class="app-brand__title">{{ 'common.brand.name' | translate }}</span>
+        <span class="app-brand__subtitle">{{ 'common.brand.tagline' | translate }}</span>
+      </div>
+    </div>
+    <nav class="app-nav" aria-label="primary">
+      <ul class="app-nav__list">
+        @for (item of visiblePrimary(); track trackByPath($index, item)) {
+          <li>
+            <a
+              class="app-nav__link"
+              [routerLink]="item.path"
+              routerLinkActive="app-nav__link--active"
+              #rla="routerLinkActive"
+              [attr.aria-current]="rla.isActive ? 'page' : null"
+            >
+              <mat-icon aria-hidden="true">{{ item.icon }}</mat-icon>
+              <span>{{ item.labelKey | translate }}</span>
+            </a>
+          </li>
+        }
+      </ul>
+      <div class="app-nav__divider" role="separator"></div>
+      <ul class="app-nav__list">
+        @for (item of secondaryNav; track trackByPath($index, item)) {
+          <li>
+            <a
+              class="app-nav__link"
+              [routerLink]="item.path"
+              routerLinkActive="app-nav__link--active"
+              #rla="routerLinkActive"
+              [attr.aria-current]="rla.isActive ? 'page' : null"
+            >
+              <mat-icon aria-hidden="true">{{ item.icon }}</mat-icon>
+              <span>{{ item.labelKey | translate }}</span>
+            </a>
+          </li>
+        }
+      </ul>
+    </nav>
+  </mat-sidenav>
+
+  <mat-sidenav-content class="app-shell__content">
+    <header class="app-topbar">
+      <div class="app-topbar__start">
+        <button
+          type="button"
+          mat-icon-button
+          (click)="toggleSidenav()"
+          [attr.aria-label]="'navigation.toggle' | translate"
+        >
+          <mat-icon aria-hidden="true">menu</mat-icon>
+        </button>
+        <div class="app-topbar__title">
+          <span>{{ 'common.brand.name' | translate }}</span>
+        </div>
+      </div>
+      <div class="app-topbar__end">
+        <app-language-switcher />
+        <app-theme-switcher />
+        <app-notifications-menu />
+        <app-user-menu />
+      </div>
+    </header>
+    <main class="app-main" tabindex="-1">
+      <router-outlet />
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>
