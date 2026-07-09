@@ -64,6 +64,7 @@ public class AuditEventEntity {
     private String outcome;
 
     @Column(name = "ip_address", updatable = false, columnDefinition = "inet")
+    @org.hibernate.annotations.ColumnTransformer(write = "?::inet")
     private String ipAddress;
 
     @Column(name = "user_agent", updatable = false, length = 512)

@@ -29,6 +29,7 @@ public class MfaRecoveryCodeEntity {
     private OffsetDateTime usedAt;
 
     @Column(name = "used_ip", columnDefinition = "inet")
+    @org.hibernate.annotations.ColumnTransformer(write = "?::inet")
     private String usedIp;
 
     @Version

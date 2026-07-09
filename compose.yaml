@@ -74,6 +74,9 @@ services:
   redis:
     image: redis:7.4.2-alpine
     <<: [*restart-policy, *default-logging]
+    environment:
+      # Exposed for the healthcheck shell; also interpolated into --requirepass.
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
     command: >
       redis-server
       --appendonly yes
@@ -89,7 +92,7 @@ services:
     networks:
       - data
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD} --no-auth-warning PING | grep -q PONG"]
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning PING | grep -q PONG"]
       interval: 10s
       timeout: 5s
       retries: 10

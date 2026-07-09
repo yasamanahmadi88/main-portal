@@ -23,6 +23,7 @@ public class UserSessionMetadataEntity {
     private String sessionId;
 
     @Column(name = "ip_address", columnDefinition = "inet")
+    @org.hibernate.annotations.ColumnTransformer(write = "?::inet")
     private String ipAddress;
 
     @Column(name = "user_agent", length = 512)

@@ -32,6 +32,7 @@ public class PasswordResetTokenEntity {
     private OffsetDateTime consumedAt;
 
     @Column(name = "request_ip", columnDefinition = "inet")
+    @org.hibernate.annotations.ColumnTransformer(write = "?::inet")
     private String requestIp;
 
     @Column(name = "request_user_agent", length = 512)
