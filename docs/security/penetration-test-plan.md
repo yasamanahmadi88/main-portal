@@ -11,7 +11,7 @@ Validate the portal's authentication, authorization, audit, logging, and deploym
 - Test data is synthetic.
 - Logging and audit are enabled.
 - Rate-limit thresholds are documented for testers.
-- CI `fullstack-verify` has produced a recent green (or reviewed) live-stack evidence pack.
+- CI `fullstack-verify` has produced a recent **green** live-stack evidence pack (example: Actions run `29050258913` on tip `41eac10`, artifact `live-stack-evidence` + `zap-baseline-report`).
 
 ## Test accounts
 

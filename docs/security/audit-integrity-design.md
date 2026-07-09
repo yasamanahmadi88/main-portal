@@ -89,7 +89,7 @@ Flyway `V7` / `V9` revoke `UPDATE`/`DELETE`/`TRUNCATE` on `audit_events` (append
 | Hash fields populated | `audit-db-verify.sh` + `LiveSecurityIntegrationTest` |
 | API integrity verify | `POST /api/v1/audit-events/verify-integrity` in `live-api-verify.sh` |
 | Unit hash-chain math | `AuditHashChainTest` |
-| CI live evidence | `fullstack-verify` artifact `live-stack-evidence/audit-integrity.txt` |
+| CI live evidence | `fullstack-verify` artifact `live-stack-evidence/audit-integrity.txt` (green run [29050258913](https://github.com/yasamanahmadi88/main-portal/actions/runs/29050258913): runtime UPDATE/DELETE denied; hash-chain API PASS; no secrets in payload_json) |
 
 ## Limitations
 

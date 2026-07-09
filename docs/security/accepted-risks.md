@@ -12,11 +12,12 @@ Accepted risks require explicit ownership, expiry, compensating controls, and re
 
 | Source | Risk | Current handling |
 |--------|------|------------------|
-| Cloud Agent / local Docker | Overlay mount prevents container execution in Cursor Cloud | Live verification runs in GitHub Actions `fullstack-verify`; quality gates stay truthful until that job is green. |
-| ZAP baseline | Baseline scanner may report informational/low noise on login pages | Artifact retained; `fail_action: false` until triage policy is defined; critical/high must be fixed or justified. |
+| Cloud Agent / local Docker | Overlay mount prevents container execution in Cursor Cloud | Live verification runs in GitHub Actions `fullstack-verify` (green as of run 29050258913). |
+| ZAP Medium — CSP `style-src 'unsafe-inline'` | Required for Angular Material runtime styles | Documented; scripts remain `script-src 'self'`; no High findings. Triage before production acceptance. |
+| ZAP Low — Cookie No HttpOnly on `XSRF-TOKEN` | Double-submit CSRF cookie must be JS-readable | Expected for CookieCsrfTokenRepository; session cookie remains HttpOnly (verified). |
 | ASVS V8.5 / TLS / WAF | Production TLS termination, WAF, and backup immutability are environment controls | Documented in pen-test plan; not claimed VERIFIED from application CI alone. |
 | MFA live e2e | Full TOTP enroll/challenge/recovery Playwright path still expanding | Unit + encryption key wiring verified; live MFA scenarios tracked in NEXT-STEPS. |
-| Rate-limit burst | Redis rate limiter implemented; automated burst assertion pending | Code path present; add shell burst test before production. |
+| Observability overlay | Prometheus/Grafana/Loki/Tempo full correlation not started in default fullstack job | Core actuator scrape + log redaction verified; enable `compose.observability.yaml` for full stack. |
 
 ## Acceptance template
 
