@@ -1,0 +1,107 @@
+# OpenTelemetry Collector — receives OTLP from the backend, exports:
+#   * traces  → Tempo (OTLP gRPC on tempo:4317)
+#   * metrics → Prometheus scrape endpoint on :8889
+#   * logs    → Loki (via OTLP HTTP)
+#
+# The collector never talks to the public internet.  Everything is
+# service-to-service inside the compose "backend" + "observability" networks.
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+  pprof:
+    endpoint: 127.0.0.1:1777
+  zpages:
+    endpoint: 127.0.0.1:55679
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+        max_recv_msg_size_mib: 16
+      http:
+        endpoint: 0.0.0.0:4318
+        # Public API port; keep CORS off — backend calls the collector
+        # container-to-container.
+  # Scrape the collector's own metrics so we can observe the observability.
+  prometheus/self:
+    config:
+      scrape_configs:
+        - job_name: otel-collector
+          scrape_interval: 30s
+          static_configs:
+            - targets: ["127.0.0.1:8888"]
+
+processors:
+  batch:
+    send_batch_size: 8192
+    send_batch_max_size: 16384
+    timeout: 5s
+  memory_limiter:
+    check_interval: 2s
+    limit_percentage: 80
+    spike_limit_percentage: 20
+  resource:
+    attributes:
+      - key: deployment.environment
+        value: ${env:DEPLOYMENT_ENV}
+        action: upsert
+  # Redact common PII heuristics before shipping traces off-box.
+  attributes/redact:
+    actions:
+      - key: http.request.header.authorization
+        action: delete
+      - key: http.request.header.cookie
+        action: delete
+      - key: http.response.header.set-cookie
+        action: delete
+      - key: user.email
+        action: hash
+      - key: user.id
+        action: hash
+
+exporters:
+  # Traces to Tempo (OTLP over gRPC — internal, no TLS).
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+
+  # Metrics for Prometheus (pull model — Prometheus scrapes :8889).
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    resource_to_telemetry_conversion:
+      enabled: true
+
+  # Logs to Loki via OTLP HTTP push (grafana/loki 3.x accepts this natively).
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+    tls:
+      insecure: true
+
+  # Debug is off by default; enable via `--set service.pipelines.*.exporters.append=debug`
+  # if you need to inspect a payload.
+  # debug:
+  #   verbosity: normal
+
+service:
+  telemetry:
+    logs:
+      level: info
+    metrics:
+      address: 0.0.0.0:8888
+  extensions: [health_check, pprof, zpages]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, attributes/redact, batch]
+      exporters: [otlp/tempo]
+    metrics:
+      receivers: [otlp, prometheus/self]
+      processors: [memory_limiter, resource, batch]
+      exporters: [prometheus]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, attributes/redact, batch]
+      exporters: [otlphttp/loki]

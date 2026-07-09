@@ -1,0 +1,62 @@
+# Prometheus scrape configuration for the enterprise portal.
+global:
+  scrape_interval: 30s
+  scrape_timeout: 10s
+  evaluation_interval: 30s
+  external_labels:
+    monitor: portal-local
+    environment: local
+
+# No alertmanagers or rule files by default — production overlays plug in
+# their own alerting through a second compose file.
+
+scrape_configs:
+  # ------------------------------------------------------------------
+  #  Prometheus itself
+  # ------------------------------------------------------------------
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # ------------------------------------------------------------------
+  #  OpenTelemetry Collector — internal metrics + the exporter that
+  #  fans out application metrics on :8889.
+  # ------------------------------------------------------------------
+  - job_name: otel-collector-self
+    static_configs:
+      - targets: ["otel-collector:8888"]
+
+  - job_name: otel-collector-exporter
+    static_configs:
+      - targets: ["otel-collector:8889"]
+
+  # ------------------------------------------------------------------
+  #  Spring Boot backend — actuator/prometheus on the management port.
+  # ------------------------------------------------------------------
+  - job_name: portal-backend
+    metrics_path: /actuator/prometheus
+    scheme: http
+    static_configs:
+      - targets: ["backend:8081"]
+        labels:
+          service: portal-backend
+          component: backend
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: (.+):.+
+        replacement: $1
+
+  # ------------------------------------------------------------------
+  #  Loki
+  # ------------------------------------------------------------------
+  - job_name: loki
+    static_configs:
+      - targets: ["loki:3100"]
+
+  # ------------------------------------------------------------------
+  #  Tempo
+  # ------------------------------------------------------------------
+  - job_name: tempo
+    static_configs:
+      - targets: ["tempo:3200"]

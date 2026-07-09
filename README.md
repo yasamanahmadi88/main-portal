@@ -50,7 +50,29 @@ npm install
 npm start
 ```
 
-Docker Compose and nginx deployment files are not yet committed. See `docs/operations/runbook.md` for operational notes.
+### Docker Compose (recommended)
+
+```bash
+cp .env.example .env
+# edit .env — set MFA_ENCRYPTION_KEY_BASE64 (openssl rand -base64 32),
+# database passwords, GRAFANA_ADMIN_PASSWORD and Redis password.
+
+docker compose -f compose.yaml config -q       # validate
+docker compose -f compose.yaml up -d --build   # build + start core stack
+
+# Optional — observability overlay (Grafana, Prometheus, Loki, Tempo, OTel):
+docker compose -f compose.yaml -f compose.observability.yaml up -d --build
+
+# Poll health across the stack
+infrastructure/scripts/wait-for-healthy.sh -v postgres redis backend frontend mailpit
+```
+
+The portal is then reachable at `http://localhost:8080` (Mailpit UI at
+`:8025`, Grafana at `:3000` when the observability overlay is up).
+
+See `docs/operations/deployment.md` for production requirements
+(TLS termination, secret management, image provenance, backups) and
+`docs/operations/runbook.md` for day-to-day operational notes.
 
 ## Architecture summary
 

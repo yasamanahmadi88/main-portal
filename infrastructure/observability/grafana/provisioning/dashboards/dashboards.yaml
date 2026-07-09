@@ -1,0 +1,15 @@
+apiVersion: 1
+
+providers:
+  - name: portal
+    orgId: 1
+    folder: Portal
+    folderUid: portal
+    type: file
+    disableDeletion: true
+    editable: false
+    updateIntervalSeconds: 60
+    allowUiUpdates: false
+    options:
+      path: /etc/grafana/provisioning/dashboards/portal
+      foldersFromFilesStructure: true
