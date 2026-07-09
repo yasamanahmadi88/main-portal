@@ -90,19 +90,9 @@ export class I18nService {
     if (stored && this.isSupported(stored)) {
       return stored as Language;
     }
-    const navigatorLang =
-      typeof navigator !== 'undefined' ? navigator.language ?? navigator.languages?.[0] : null;
-    if (navigatorLang) {
-      const exact = SUPPORTED_LANGUAGES.find((l) => l.code === navigatorLang);
-      if (exact) {
-        return exact.code;
-      }
-      const prefix = navigatorLang.split('-')[0];
-      const partial = SUPPORTED_LANGUAGES.find((l) => l.code.startsWith(`${prefix}-`));
-      if (partial) {
-        return partial.code;
-      }
-    }
+    // Product default is Persian (fa-IR). Do not infer from navigator.language —
+    // CI browsers and many developer machines report en-US and would otherwise
+    // override the documented portal default on first visit.
     return environment.defaultLanguage as Language;
   }
 

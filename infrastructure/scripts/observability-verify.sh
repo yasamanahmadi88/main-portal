@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # Best-effort observability checks against a running compose stack.
 # When compose.observability.yaml is not attached, verifies backend Prometheus
-# scrape endpoint via the frontend/nginx actuator proxy if available, otherwise
-# via docker exec into the backend container network.
+# scrape endpoint via docker exec into the backend container.
 set -euo pipefail
 
 REPORT_DIR="${REPORT_DIR:-/tmp/portal-live-evidence}"
@@ -16,8 +15,9 @@ fail() { log "FAIL: $*"; exit 1; }
 
 log "=== Observability verification ==="
 
-# Scrape Prometheus metrics from backend management port inside compose network
-METRICS="$(docker compose exec -T backend wget -qO- http://localhost:8081/actuator/prometheus 2>/dev/null || true)"
+# Scrape Prometheus metrics from backend management port (wget is in the image).
+METRICS="$(docker compose exec -T backend \
+  wget -qO- http://127.0.0.1:8081/actuator/prometheus 2>/dev/null || true)"
 if [[ -z "$METRICS" ]]; then
   log "NOTE: could not scrape actuator/prometheus from backend container"
 else

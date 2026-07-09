@@ -92,6 +92,10 @@ test.beforeAll(async () => {
 
 test.describe('Live auth UI — language and theme', () => {
   test('Persian is default with RTL on login', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.removeItem('portal.lang');
+      localStorage.removeItem('portal.theme');
+    });
     await page.goto('/auth/login');
     const html = page.locator('html');
     await expect(html).toHaveAttribute('lang', 'fa-IR');

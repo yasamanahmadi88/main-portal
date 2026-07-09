@@ -30,6 +30,16 @@ describe('I18nService', () => {
     });
   });
 
+  it('defaults to fa-IR RTL when no preference is stored', async () => {
+    const service = TestBed.inject(I18nService);
+    await service.initialize();
+
+    expect(service.currentLanguage()).toBe('fa-IR');
+    expect(service.direction()).toBe('rtl');
+    expect(document.documentElement.getAttribute('lang')).toBe('fa-IR');
+    expect(document.documentElement.getAttribute('dir')).toBe('rtl');
+  });
+
   it('honors the stored fa-IR preference and applies RTL', async () => {
     localStorage.setItem('portal.lang', 'fa-IR');
     const service = TestBed.inject(I18nService);
