@@ -19,15 +19,24 @@ export function provideI18n(): EnvironmentProviders {
       lang: environment.defaultLanguage
     }),
     provideTranslateMultiHttpLoader({
+      // Absolute paths are required: relative `assets/...` resolves under the
+      // current route (e.g. `/auth/login` → `/auth/assets/...`) and never loads,
+      // which leaves APP_INITIALIZER pending and the SPA stuck on "Loading…".
       resources: I18N_NAMESPACES.map((ns) => ({
-        prefix: `assets/i18n/${ns}/`,
+        prefix: `/assets/i18n/${ns}/`,
         suffix: '.json'
       })),
       useHttpBackend: true
     }),
     provideAppInitializer(() => {
       const i18n = inject(I18nService);
-      return i18n.initialize();
+      // Bound the wait so a single failed namespace cannot hang bootstrap forever.
+      return Promise.race([
+        i18n.initialize(),
+        new Promise<void>((resolve) => {
+          setTimeout(() => resolve(), 8_000);
+        })
+      ]);
     })
   ]);
 }

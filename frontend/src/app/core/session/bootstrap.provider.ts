@@ -13,8 +13,16 @@ export function provideAppInitialization(): EnvironmentProviders {
       const prefs = inject(PreferencesSyncService);
       const logger = inject(LoggerService);
       try {
-        await csrf.ensure();
-        await auth.bootstrap();
+        // Never block SPA mount indefinitely if the API is slow/unreachable.
+        await Promise.race([
+          (async () => {
+            await csrf.ensure();
+            await auth.bootstrap();
+          })(),
+          new Promise<void>((resolve) => {
+            setTimeout(() => resolve(), 8_000);
+          })
+        ]);
       } catch (err) {
         logger.warn('bootstrap.failed', { message: (err as Error).message });
       }

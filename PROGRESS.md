@@ -25,16 +25,18 @@ Phases 0–15 delivered. Closing remaining live-verification gaps via GitHub Act
 
 ## SPA boot fix (2026-07-09)
 
-Playwright failed because the Angular SPA never mounted under the Docker nginx CSP:
+Playwright failed because the Angular SPA never mounted under the Docker nginx CSP / deep-route asset loading:
 
 1. `upgrade-insecure-requests` on HTTP localhost upgraded script fetches to HTTPS → bundles never loaded.
 2. Inline theme bootstrap + Angular critical-CSS `onload=` handlers violated `script-src 'self'`.
+3. Relative `assets/i18n/...` prefixes resolved under `/auth/login` as `/auth/assets/...`, so ngx-translate never completed and `APP_INITIALIZER` hung on the static "Loading…" placeholder.
 
 Remediation:
 
 - nginx maps `upgrade-insecure-requests` only when `$forwarded_scheme` is `https`
 - theme bootstrap moved to `public/theme-bootstrap.js`
 - production build sets `inlineCritical: false`
+- i18n loader prefixes are absolute (`/assets/i18n/...`) with bootstrap timeouts
 - `spa-boot-verify.sh` + Playwright artifact copy-on-failure added to `fullstack-verify`
 
 ## Known limitations (truthful)

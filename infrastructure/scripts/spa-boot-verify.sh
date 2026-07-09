@@ -40,6 +40,21 @@ curl -fsS "$BASE_URL/theme-bootstrap.js" -o /dev/null \
   || fail "theme-bootstrap.js not served"
 pass "theme-bootstrap.js served; index.html has no CSP-blocked inline scripts"
 
+# i18n JSON must be reachable from deep routes (absolute /assets/... paths).
+for path in \
+  /assets/i18n/common/fa-IR.json \
+  /assets/i18n/authentication/fa-IR.json \
+  /assets/i18n/common/en-US.json
+do
+  code="$(curl -s -o /tmp/i18n-sample.json -w '%{http_code}' "$BASE_URL$path")"
+  ctype="$(file -b --mime-type /tmp/i18n-sample.json 2>/dev/null || true)"
+  [[ "$code" == "200" ]] || fail "i18n asset $path HTTP $code"
+  python3 -c 'import json,sys; json.load(open("/tmp/i18n-sample.json"))' \
+    || fail "i18n asset $path is not JSON (got HTML SPA fallback?)"
+  log "i18n_ok path=$path http=$code mime=${ctype:-unknown}"
+done
+pass "i18n JSON assets served as JSON"
+
 python3 - <<'PY' "$BASE_URL" "$REPORT_DIR" "$EVIDENCE"
 import re, subprocess, sys, pathlib
 

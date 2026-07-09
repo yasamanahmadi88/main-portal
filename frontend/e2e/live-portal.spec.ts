@@ -107,15 +107,18 @@ test.describe('Live auth UI — language and theme', () => {
       localStorage.removeItem('portal.lang');
       localStorage.removeItem('portal.theme');
     });
-    await page.goto('/auth/login', { waitUntil: 'networkidle' });
+    await page.goto('/auth/login', { waitUntil: 'domcontentloaded' });
+    // Confirm i18n JSON is not served as the SPA fallback HTML.
+    const i18nProbe = await page.request.get('/assets/i18n/common/fa-IR.json');
+    expect(i18nProbe.status(), 'i18n common/fa-IR.json').toBe(200);
+    expect(i18nProbe.headers()['content-type'] ?? '').toMatch(/json/);
     const html = page.locator('html');
     await expect(html).toHaveAttribute('lang', 'fa-IR');
     await expect(html).toHaveAttribute('dir', 'rtl');
     // Wait for Angular to replace the static loading placeholder.
-    await expect(page.locator('app-root app-language-switcher, [data-testid="language-switcher"]')).toBeVisible({
-      timeout: 30_000
+    await expect(page.locator('[data-testid="language-switcher"]')).toBeVisible({
+      timeout: 45_000
     });
-    await expect(page.locator('[data-testid="language-switcher"]')).toBeVisible({ timeout: 15_000 });
     await expect(page.locator('[data-testid="theme-switcher"]')).toBeVisible({ timeout: 15_000 });
     // Accessible names resolve once i18n bundles load.
     await expect(
