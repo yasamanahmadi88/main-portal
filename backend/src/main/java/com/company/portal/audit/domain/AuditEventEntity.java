@@ -64,7 +64,7 @@ public class AuditEventEntity {
     private String outcome;
 
     @Column(name = "ip_address", updatable = false, columnDefinition = "inet")
-    @org.hibernate.annotations.ColumnTransformer(write = "?::inet")
+    @org.hibernate.annotations.ColumnTransformer(read = "ip_address::text", write = "?::inet")
     private String ipAddress;
 
     @Column(name = "user_agent", updatable = false, length = 512)
@@ -83,7 +83,7 @@ public class AuditEventEntity {
     private String sessionId;
 
     @Column(name = "payload_json", nullable = false, updatable = false, columnDefinition = "jsonb")
-    @org.hibernate.annotations.ColumnTransformer(write = "?::jsonb")
+    @org.hibernate.annotations.ColumnTransformer(read = "payload_json::text", write = "?::jsonb")
     private String payloadJson;
 
     @Column(name = "previous_hash", updatable = false, length = 128)

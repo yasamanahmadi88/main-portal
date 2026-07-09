@@ -217,7 +217,12 @@ code="$(api "$anon" POST "/api/v1/users/$FIXTURE_USER_ID/sessions/revoke" "{}")"
 
 # Authorized audit access + export authorization
 code="$(api "$COOKIE_JAR" GET "/api/v1/audit-events?page=0&size=5")"
-[[ "$code" == "200" ]] && pass "SUPER_ADMIN audit list authorized" || fail "audit list got $code"
+if [[ "$code" == "200" ]]; then
+  pass "SUPER_ADMIN audit list authorized"
+else
+  cat /tmp/rbac-resp.json >>"$EVIDENCE"
+  fail "audit list got $code"
+fi
 code="$(api "$COOKIE_JAR" POST "/api/v1/audit-events/export" '{"format":"CSV"}')"
 [[ "$code" == "200" || "$code" == "202" ]] && pass "SUPER_ADMIN audit export authorized ($code)" \
   || { cat /tmp/rbac-resp.json >>"$EVIDENCE"; fail "audit export got $code"; }

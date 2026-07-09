@@ -56,16 +56,21 @@ public class AuditQueryService {
         } catch (Exception ex) {
             metadata = Collections.emptyMap();
         }
+        String action = e.getAction() == null || e.getAction().isBlank()
+                ? e.getEventType() : e.getAction();
         return new AuditEventDto(
                 e.getId(),
                 e.getOccurredAt(),
-                new AuditEventDto.Actor(e.getActorType(), e.getActorId(), e.getActorDisplay()),
-                e.getAction(),
+                new AuditEventDto.Actor(
+                        e.getActorType() == null ? "UNKNOWN" : e.getActorType(),
+                        e.getActorId(),
+                        e.getActorDisplay()),
+                action,
                 new AuditEventDto.Resource(e.getTargetType(), e.getTargetId(), e.getTargetDisplay()),
-                e.getOutcome(),
+                e.getOutcome() == null ? "UNKNOWN" : e.getOutcome(),
                 e.getIpAddress(),
                 e.getUserAgent(),
-                metadata,
+                metadata == null ? Collections.emptyMap() : metadata,
                 e.getPreviousHash(),
                 e.getCurrentHash()
         );
