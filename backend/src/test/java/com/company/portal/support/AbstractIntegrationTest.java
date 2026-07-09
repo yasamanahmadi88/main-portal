@@ -14,9 +14,9 @@ import org.testcontainers.utility.DockerImageName;
  * Redis containers via Testcontainers and wires Spring Boot properties to
  * point at them.
  *
- * <p>Tests requiring Docker should extend this. When Docker is not available
- * container startup fails fast — use {@link DockerAvailability#isAvailable()}
- * from lighter unit tests to skip gracefully.</p>
+ * <p>Containers start only when Docker can actually run them. Subclasses must
+ * also use {@code @EnabledIf(DockerAvailability.class)} so Spring Boot does
+ * not attempt context startup when Docker is unusable.</p>
  */
 @Testcontainers
 @ActiveProfiles("test")
@@ -36,8 +36,13 @@ public abstract class AbstractIntegrationTest {
                     .withReuse(false);
 
     static {
-        POSTGRES.start();
-        REDIS.start();
+        // Start only when a real container can be created. Class loading for
+        // disabled (@EnabledIf false) tests still executes this block, so the
+        // probe must be cheap after the first call (cached).
+        if (DockerAvailability.isAvailable()) {
+            POSTGRES.start();
+            REDIS.start();
+        }
     }
 
     @DynamicPropertySource

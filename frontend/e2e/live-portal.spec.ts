@@ -1,0 +1,267 @@
+import { expect, test } from './utils';
+import AxeBuilder from '@axe-core/playwright';
+import type { APIRequestContext, Page } from '@playwright/test';
+
+/**
+ * Live end-to-end suite against a fully running portal stack.
+ * Requires PORTAL_E2E_BASE_URL (e.g. http://localhost:8080) and
+ * PORTAL_E2E_ADMIN_EMAIL / PORTAL_E2E_ADMIN_PASSWORD.
+ *
+ * Skips are disabled when PORTAL_E2E_REQUIRE_LIVE=1 (CI fullstack job).
+ */
+
+const BASE = process.env.PORTAL_E2E_BASE_URL ?? 'http://localhost:8080';
+const ADMIN_EMAIL = process.env.PORTAL_E2E_ADMIN_EMAIL ?? '';
+const ADMIN_PASSWORD = process.env.PORTAL_E2E_ADMIN_PASSWORD ?? '';
+const REQUIRE_LIVE = process.env.PORTAL_E2E_REQUIRE_LIVE === '1';
+
+async function requireStack(): Promise<void> {
+  try {
+    const res = await fetch(`${BASE}/healthz`, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok && res.status >= 500) {
+      throw new Error(`healthz ${res.status}`);
+    }
+  } catch (err) {
+    if (REQUIRE_LIVE) {
+      throw new Error(`Live stack required but unreachable at ${BASE}: ${err}`);
+    }
+    test.skip(true, `Stack not reachable at ${BASE}`);
+  }
+}
+
+async function csrf(request: APIRequestContext): Promise<string> {
+  const res = await request.get('/api/v1/auth/csrf');
+  expect(res.ok()).toBeTruthy();
+  const body = (await res.json()) as { token: string };
+  expect(body.token).toBeTruthy();
+  return body.token;
+}
+
+async function loginApi(
+  request: APIRequestContext,
+  email: string,
+  password: string
+): Promise<{ status: string; token: string }> {
+  const token = await csrf(request);
+  const res = await request.post('/api/v1/auth/login', {
+    headers: { 'X-XSRF-TOKEN': token, 'Content-Type': 'application/json' },
+    data: { username: email, password, rememberDevice: false }
+  });
+  const body = await res.json();
+  expect(res.status(), JSON.stringify(body)).toBe(200);
+  const token2 = await csrf(request);
+  return { status: body.status as string, token: token2 };
+}
+
+async function expectNoStorageAuth(page: Page): Promise<void> {
+  const leaked = await page.evaluate(() => {
+    const keys = [...Object.keys(localStorage), ...Object.keys(sessionStorage)];
+    // Language/theme preference keys are expected; auth tokens are not.
+    return keys.filter(
+      (k) =>
+        /token|jwt|session|auth|password|csrf/i.test(k) &&
+        !/^portal\.(lang|theme)$/i.test(k)
+    );
+  });
+  expect(leaked, `auth-like keys in browser storage: ${leaked.join(',')}`).toEqual([]);
+}
+
+async function openLanguageMenu(page: Page): Promise<void> {
+  await page.getByRole('button', { name: /change language|تغییر زبان/i }).click();
+}
+
+async function openThemeMenu(page: Page): Promise<void> {
+  await page.getByRole('button', { name: /change theme|تغییر پوسته/i }).click();
+}
+
+async function axeSeriousCritical(page: Page, label: string): Promise<void> {
+  const results = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag22aa'])
+    .analyze();
+  const serious = results.violations.filter((v) =>
+    ['serious', 'critical'].includes(v.impact ?? '')
+  );
+  expect(serious, `${label}: ${JSON.stringify(serious, null, 2)}`).toEqual([]);
+}
+
+test.describe.configure({ mode: 'serial' });
+
+test.beforeAll(async () => {
+  await requireStack();
+});
+
+test.describe('Live auth UI — language and theme', () => {
+  test('Persian is default with RTL on login', async ({ page }) => {
+    await page.goto('/auth/login');
+    const html = page.locator('html');
+    await expect(html).toHaveAttribute('lang', 'fa-IR');
+    await expect(html).toHaveAttribute('dir', 'rtl');
+    await expect(page.getByRole('button', { name: /change language|تغییر زبان/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /change theme|تغییر پوسته/i })).toBeVisible();
+  });
+
+  test('switches to English LTR without full navigation reload barrier', async ({ page }) => {
+    await page.goto('/auth/login');
+    await openLanguageMenu(page);
+    await page.getByRole('menuitem', { name: /English/i }).click();
+    const html = page.locator('html');
+    await expect(html).toHaveAttribute('lang', 'en-US');
+    await expect(html).toHaveAttribute('dir', 'ltr');
+    await expect(page.locator('form')).toBeVisible();
+  });
+
+  test('theme toggles light, dark, and system', async ({ page }) => {
+    await page.goto('/auth/login');
+    const html = page.locator('html');
+    await openThemeMenu(page);
+    await page.getByRole('menuitem', { name: /روشن|Light/i }).click();
+    await expect(html).toHaveAttribute('data-theme', 'light');
+    await openThemeMenu(page);
+    await page.getByRole('menuitem', { name: /تیره|Dark/i }).click();
+    await expect(html).toHaveAttribute('data-theme', 'dark');
+    await openThemeMenu(page);
+    await page.getByRole('menuitem', { name: /سیستم|System|Automatic/i }).click();
+    await expect(html).toHaveAttribute('data-theme', /light|dark/);
+  });
+});
+
+test.describe('Live Axe accessibility', () => {
+  test('login Persian RTL has no serious/critical axe violations', async ({ page }) => {
+    await page.goto('/auth/login');
+    await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+    await axeSeriousCritical(page, 'login-fa');
+  });
+
+  test('login English LTR has no serious/critical axe violations', async ({ page }) => {
+    await page.goto('/auth/login');
+    await openLanguageMenu(page);
+    await page.getByRole('menuitem', { name: /English/i }).click();
+    await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
+    await axeSeriousCritical(page, 'login-en');
+  });
+});
+
+test.describe('Live login / logout / storage', () => {
+  test.skip(!ADMIN_EMAIL || !ADMIN_PASSWORD, 'Admin credentials not provided');
+
+  test('failed login shows generic error', async ({ page }) => {
+    await page.goto('/auth/login');
+    await openLanguageMenu(page);
+    await page.getByRole('menuitem', { name: /English/i }).click();
+    await page.locator('input[formcontrolname="username"]').fill('nobody@example.com');
+    await page.locator('input[name="password"], input[formcontrolname="password"]').fill('WrongPassword!12345');
+    await page.locator('button[type="submit"]').click();
+    await expect(page.getByRole('alert')).toBeVisible({ timeout: 10_000 });
+    const alertText = await page.getByRole('alert').innerText();
+    expect(alertText.toLowerCase()).not.toMatch(/not found|does not exist|no such/);
+  });
+
+  test('successful login, navbar controls, no browser token storage, logout', async ({
+    page,
+    request
+  }) => {
+    const consoleErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+
+    await page.goto('/auth/login');
+    await openLanguageMenu(page);
+    await page.getByRole('menuitem', { name: /English/i }).click();
+    await page.locator('input[formcontrolname="username"]').fill(ADMIN_EMAIL);
+    await page.locator('input[name="password"], input[formcontrolname="password"]').fill(ADMIN_PASSWORD);
+    await page.locator('button[type="submit"]').click();
+    await page.waitForURL(/\/dashboard/, { timeout: 20_000 });
+    await expect(page.getByRole('button', { name: /change language|تغییر زبان/i })).toBeVisible({
+      timeout: 20_000
+    });
+    await expect(page.getByRole('button', { name: /change theme|تغییر پوسته/i })).toBeVisible();
+    await expectNoStorageAuth(page);
+
+    const cookies = await page.context().cookies();
+    const session = cookies.find(
+      (c) => /session/i.test(c.name) || c.name === 'PORTAL_SESSION' || c.name.startsWith('__Host-')
+    );
+    expect(session, 'session cookie missing').toBeTruthy();
+    expect(session!.httpOnly).toBeTruthy();
+
+    await axeSeriousCritical(page, 'dashboard-en');
+
+    await openLanguageMenu(page);
+    await page.getByRole('menuitem', { name: /فارسی/i }).click();
+    await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+    await axeSeriousCritical(page, 'dashboard-fa');
+
+    const unexpected = consoleErrors.filter(
+      (e) => !/favicon|Download the React DevTools|NG0|ExpressionChanged/i.test(e)
+    );
+    expect(unexpected, `console errors: ${unexpected.join('\n')}`).toEqual([]);
+
+    const token = await csrf(request);
+    const logout = await request.post('/api/v1/auth/logout', { headers: { 'X-XSRF-TOKEN': token } });
+    expect(logout.status()).toBeLessThan(400);
+  });
+
+  test('CSRF rejection on login without token', async ({ request }) => {
+    const res = await request.post('/api/v1/auth/login', {
+      headers: { 'Content-Type': 'application/json' },
+      data: { username: 'x@y.com', password: 'abcdefghijkl', rememberDevice: false }
+    });
+    expect(res.status()).toBe(403);
+  });
+
+  test('API login + me + sessions', async ({ request }) => {
+    const { token } = await loginApi(request, ADMIN_EMAIL, ADMIN_PASSWORD);
+    const me = await request.get('/api/v1/me', { headers: { 'X-XSRF-TOKEN': token } });
+    expect(me.ok()).toBeTruthy();
+    const sessions = await request.get('/api/v1/me/sessions', {
+      headers: { 'X-XSRF-TOKEN': token }
+    });
+    expect(sessions.status()).toBeLessThan(500);
+  });
+});
+
+test.describe('Live admin surfaces accessibility', () => {
+  test.skip(!ADMIN_EMAIL || !ADMIN_PASSWORD, 'Admin credentials not provided');
+
+  test('users, roles, permissions, profile security pages axe', async ({ page }) => {
+    await page.goto('/auth/login');
+    await openLanguageMenu(page);
+    await page.getByRole('menuitem', { name: /English/i }).click();
+    await page.locator('input[formcontrolname="username"]').fill(ADMIN_EMAIL);
+    await page.locator('input[name="password"], input[formcontrolname="password"]').fill(ADMIN_PASSWORD);
+    await page.locator('button[type="submit"]').click();
+    await page.waitForURL(/\/dashboard/, { timeout: 20_000 });
+
+    const paths = ['/users', '/roles', '/permissions', '/profile/security', '/dashboard'];
+    for (const path of paths) {
+      await page.goto(path);
+      expect(page.url(), `redirected to login for ${path}`).not.toContain('/auth/login');
+      await axeSeriousCritical(page, path);
+    }
+  });
+});
+
+test.describe('Mobile viewport', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('login usable on mobile', async ({ page }) => {
+    await page.goto('/auth/login');
+    await expect(page.locator('form')).toBeVisible();
+    await expect(page.locator('button[type="submit"]')).toBeVisible();
+  });
+});
+
+test.describe('Keyboard navigation', () => {
+  test('login form is keyboard reachable', async ({ page }) => {
+    await page.goto('/auth/login');
+    await openLanguageMenu(page);
+    await page.getByRole('menuitem', { name: /English/i }).click();
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+    const active = page.locator(':focus');
+    await expect(active).toBeVisible();
+  });
+});
