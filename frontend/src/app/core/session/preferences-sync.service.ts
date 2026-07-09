@@ -66,8 +66,7 @@ export class PreferencesSyncService {
         };
         this.lastPushedLanguage = language;
         this.lastPushedTheme = mode;
-        // Soft-fail conflicts (optimistic lock / concurrent preference writes).
-        this.api.updatePreferences(patch).subscribe({
+        this.api.updatePreferences(patch, { skipErrorHandling: true }).subscribe({
           error: (err) =>
             this.logger.info('preferences.sync.failed', {
               message: (err as Error).message,

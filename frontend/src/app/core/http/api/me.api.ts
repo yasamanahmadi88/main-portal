@@ -1,7 +1,8 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
+import { SKIP_ERROR_HANDLING } from '@core/error-handling/error.interceptor';
 import type {
   ActionResult,
   ChangePasswordRequest,
@@ -42,9 +43,16 @@ export class MeApi {
     return this.http.get<Preferences>('/api/v1/me/preferences', { withCredentials: true });
   }
 
-  updatePreferences(payload: PreferencesPatchRequest): Observable<Preferences> {
+  updatePreferences(
+    payload: PreferencesPatchRequest,
+    options: { skipErrorHandling?: boolean } = {}
+  ): Observable<Preferences> {
+    const context = options.skipErrorHandling
+      ? new HttpContext().set(SKIP_ERROR_HANDLING, true)
+      : undefined;
     return this.http.patch<Preferences>('/api/v1/me/preferences', payload, {
-      withCredentials: true
+      withCredentials: true,
+      context
     });
   }
 
