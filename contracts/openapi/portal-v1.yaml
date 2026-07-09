@@ -1,0 +1,3022 @@
+openapi: 3.1.0
+info:
+  title: Enterprise Portal API
+  version: 1.0.0
+  summary: Contract-first API for the enterprise portal BFF.
+  description: |
+    Enterprise Portal API v1 is served under `/api/v1` and uses same-origin,
+    cookie-backed sessions with CSRF protection for unsafe requests.
+
+    Rate limiting is documented with `X-RateLimit-Limit`,
+    `X-RateLimit-Remaining`, `X-RateLimit-Reset`, and `Retry-After` response
+    headers. Unless otherwise specified, operations may return the standard
+    Problem Details responses defined in `components.responses` for 400, 401,
+    403, 404, 409, 422, 429, and 500.
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+tags:
+  - name: Auth
+    description: Authentication, CSRF, password recovery, and login MFA.
+  - name: Me
+    description: Self-service profile, preferences, sessions, and MFA.
+  - name: Users
+    description: Administrative user management.
+  - name: Roles
+    description: Role lifecycle and role permission assignment.
+  - name: Permissions
+    description: Permission catalog and matrix views.
+  - name: Sessions
+    description: Administrative session management.
+  - name: Audit
+    description: Audit event search, export, and integrity verification.
+  - name: SecurityEvents
+    description: Security event monitoring and acknowledgement.
+  - name: Settings
+    description: Tenant and system settings.
+  - name: Dashboard
+    description: Portal dashboard summaries.
+x-standard-error-responses:
+  "400": "#/components/responses/BadRequest"
+  "401": "#/components/responses/Unauthorized"
+  "403": "#/components/responses/Forbidden"
+  "404": "#/components/responses/NotFound"
+  "409": "#/components/responses/Conflict"
+  "422": "#/components/responses/UnprocessableEntity"
+  "429": "#/components/responses/TooManyRequests"
+  "500": "#/components/responses/InternalServerError"
+paths:
+  /api/v1/auth/login:
+    post:
+      tags:
+        - Auth
+      operationId: login
+      summary: Authenticate with username and password.
+      description: Creates a server-side session or returns an MFA challenge when additional verification is required.
+      security:
+        - csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login completed or MFA challenge issued.
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/XRateLimitLimit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/XRateLimitRemaining"
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/XRateLimitReset"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/auth/logout:
+    post:
+      tags:
+        - Auth
+      operationId: logout
+      summary: Terminate the current session.
+      security:
+        - cookieAuth: []
+          csrfHeader: []
+      responses:
+        "204":
+          description: Current session revoked.
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/XRateLimitLimit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/XRateLimitRemaining"
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/XRateLimitReset"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/auth/password/forgot:
+    post:
+      tags:
+        - Auth
+      operationId: requestPasswordReset
+      summary: Request a password reset.
+      description: Always returns an accepted response to avoid account enumeration.
+      security:
+        - csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ForgotPasswordRequest"
+      responses:
+        "202":
+          description: Password reset request accepted.
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/XRateLimitLimit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/XRateLimitRemaining"
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/XRateLimitReset"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/auth/password/reset:
+    post:
+      tags:
+        - Auth
+      operationId: resetPassword
+      summary: Complete a password reset with a reset token.
+      security:
+        - csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetPasswordRequest"
+      responses:
+        "204":
+          description: Password reset completed.
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/XRateLimitLimit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/XRateLimitRemaining"
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/XRateLimitReset"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/auth/mfa/verify:
+    post:
+      tags:
+        - Auth
+      operationId: verifyLoginMfa
+      summary: Verify MFA during login.
+      security:
+        - csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MfaVerifyRequest"
+      responses:
+        "200":
+          description: MFA verification succeeded and a session was established.
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/XRateLimitLimit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/XRateLimitRemaining"
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/XRateLimitReset"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/auth/mfa/recovery:
+    post:
+      tags:
+        - Auth
+      operationId: verifyLoginRecoveryCode
+      summary: Verify a recovery code during login.
+      security:
+        - csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MfaRecoveryRequest"
+      responses:
+        "200":
+          description: Recovery code accepted and a session was established.
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/XRateLimitLimit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/XRateLimitRemaining"
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/XRateLimitReset"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/auth/csrf:
+    get:
+      tags:
+        - Auth
+      operationId: getCsrfToken
+      summary: Return the current CSRF token.
+      description: Issues or refreshes the CSRF token used in `X-XSRF-TOKEN` for unsafe requests.
+      security: []
+      responses:
+        "200":
+          description: Current CSRF token.
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/XRateLimitLimit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/XRateLimitRemaining"
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/XRateLimitReset"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CsrfToken"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/me:
+    get:
+      tags:
+        - Me
+      operationId: getCurrentUser
+      summary: Get the authenticated user's profile.
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Current user profile.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    patch:
+      tags:
+        - Me
+      operationId: updateCurrentUser
+      summary: Update the authenticated user's profile.
+      security:
+        - cookieAuth: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMeRequest"
+      responses:
+        "200":
+          description: Updated user profile.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/me/preferences:
+    get:
+      tags:
+        - Me
+      operationId: getMyPreferences
+      summary: Get current user preferences.
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Current preferences.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Preferences"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    patch:
+      tags:
+        - Me
+      operationId: updateMyPreferences
+      summary: Update current user preferences.
+      security:
+        - cookieAuth: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PreferencesPatchRequest"
+      responses:
+        "200":
+          description: Updated preferences.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Preferences"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/me/password:
+    post:
+      tags:
+        - Me
+      operationId: changeMyPassword
+      summary: Change the current user's password.
+      security:
+        - cookieAuth: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordRequest"
+      responses:
+        "204":
+          description: Password changed.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/me/sessions:
+    get:
+      tags:
+        - Me
+      operationId: listMySessions
+      summary: List current user's active sessions.
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+        - $ref: "#/components/parameters/Sort"
+      responses:
+        "200":
+          description: Current user's sessions.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/me/sessions/{sessionId}:
+    delete:
+      tags:
+        - Me
+      operationId: revokeMySession
+      summary: Revoke one of the current user's sessions.
+      security:
+        - cookieAuth: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "204":
+          description: Session revoked.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/me/sessions/revoke-others:
+    post:
+      tags:
+        - Me
+      operationId: revokeMyOtherSessions
+      summary: Revoke all current-user sessions except the caller's session.
+      security:
+        - cookieAuth: []
+          csrfHeader: []
+      responses:
+        "200":
+          description: Other sessions revoked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionRevocationResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/me/mfa:
+    get:
+      tags:
+        - Me
+      operationId: listMyMfaFactors
+      summary: List current user's MFA factors.
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: MFA factor list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MfaFactor"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/me/mfa/totp/setup:
+    post:
+      tags:
+        - Me
+      operationId: setupMyTotpMfa
+      summary: Start TOTP MFA enrollment.
+      security:
+        - cookieAuth: []
+          csrfHeader: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MfaSetupRequest"
+      responses:
+        "201":
+          description: TOTP setup material.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MfaSetup"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/me/mfa/totp/confirm:
+    post:
+      tags:
+        - Me
+      operationId: confirmMyTotpMfa
+      summary: Confirm TOTP MFA enrollment.
+      security:
+        - cookieAuth: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MfaConfirmRequest"
+      responses:
+        "200":
+          description: MFA factor enabled and recovery codes issued.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MfaEnrollmentResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/me/mfa/recovery-codes:
+    get:
+      tags:
+        - Me
+      operationId: getMyMfaRecoveryCodeStatus
+      summary: Get recovery-code availability for the current user.
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Recovery-code status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecoveryCodeStatus"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/me/mfa/recovery-codes/regenerate:
+    post:
+      tags:
+        - Me
+      operationId: regenerateMyMfaRecoveryCodes
+      summary: Regenerate current user's MFA recovery codes.
+      security:
+        - cookieAuth: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PasswordConfirmationRequest"
+      responses:
+        "200":
+          description: New recovery codes.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecoveryCodes"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/me/mfa/{factorId}:
+    delete:
+      tags:
+        - Me
+      operationId: deleteMyMfaFactor
+      summary: Delete an MFA factor for the current user.
+      security:
+        - cookieAuth: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/FactorId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PasswordConfirmationRequest"
+      responses:
+        "204":
+          description: MFA factor deleted.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/users:
+    get:
+      tags:
+        - Users
+      operationId: listUsers
+      summary: Search and list users.
+      x-permissions:
+        - USER_READ
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+        - $ref: "#/components/parameters/Sort"
+        - name: q
+          in: query
+          description: Search text matched against username, display name, and email.
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/UserStatus"
+      responses:
+        "200":
+          description: User page.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags:
+        - Users
+      operationId: createUser
+      summary: Create a user.
+      x-permissions:
+        - USER_CREATE
+      security:
+        - cookieAuth: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+      responses:
+        "201":
+          description: Created user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/users/{userId}:
+    get:
+      tags:
+        - Users
+      operationId: getUser
+      summary: Get a user by ID.
+      x-permissions:
+        - USER_READ
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "200":
+          description: User details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    patch:
+      tags:
+        - Users
+      operationId: updateUser
+      summary: Update a user.
+      x-permissions:
+        - USER_UPDATE
+      security:
+        - cookieAuth: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRequest"
+      responses:
+        "200":
+          description: Updated user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/users/{userId}/activate:
+    post:
+      tags:
+        - Users
+      operationId: activateUser
+      summary: Activate a user.
+      x-permissions:
+        - USER_ACTIVATE
+      security:
+        - cookieAuth: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        $ref: "#/components/requestBodies/UserActionRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/UserActionCompleted"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/users/{userId}/deactivate:
+    post:
+      tags:
+        - Users
+      operationId: deactivateUser
+      summary: Deactivate a user.
+      x-permissions:
+        - USER_DEACTIVATE
+      security:
+        - cookieAuth: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        $ref: "#/components/requestBodies/UserActionRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/UserActionCompleted"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/users/{userId}/unlock:
+    post:
+      tags:
+        - Users
+      operationId: unlockUser
+      summary: Unlock a locked user.
+      x-permissions:
+        - USER_UNLOCK
+      security:
+        - cookieAuth: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        $ref: "#/components/requestBodies/UserActionRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/UserActionCompleted"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/users/{userId}/password-reset:
+    post:
+      tags:
+        - Users
+      operationId: triggerUserPasswordReset
+      summary: Trigger a password reset for a user.
+      x-permissions:
+        - USER_PASSWORD_RESET
+      security:
+        - cookieAuth: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        $ref: "#/components/requestBodies/UserActionRequest"
+      responses:
+        "202":
+          $ref: "#/components/responses/UserActionAccepted"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/users/{userId}/mfa-reset:
+    post:
+      tags:
+        - Users
+      operationId: resetUserMfa
+      summary: Reset all MFA factors for a user.
+      x-permissions:
+        - USER_MFA_RESET
+      security:
+        - cookieAuth: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        $ref: "#/components/requestBodies/UserActionRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/UserActionCompleted"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/users/{userId}/sessions/revoke:
+    post:
+      tags:
+        - Users
+      operationId: revokeUserSessions
+      summary: Revoke all sessions for a user.
+      x-permissions:
+        - SESSION_REVOKE
+      security:
+        - cookieAuth: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        $ref: "#/components/requestBodies/UserActionRequest"
+      responses:
+        "200":
+          description: Sessions revoked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionRevocationResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/users/{userId}/roles:
+    get:
+      tags:
+        - Users
+      operationId: getUserRoles
+      summary: Get roles assigned to a user.
+      x-permissions:
+        - USER_ROLE_READ
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "200":
+          description: User roles.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Role"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    put:
+      tags:
+        - Users
+      operationId: replaceUserRoles
+      summary: Replace roles assigned to a user.
+      x-permissions:
+        - USER_ROLE_UPDATE
+      security:
+        - cookieAuth: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssignRolesRequest"
+      responses:
+        "200":
+          description: Updated roles.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Role"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/roles:
+    get:
+      tags:
+        - Roles
+      operationId: listRoles
+      summary: List roles.
+      x-permissions:
+        - ROLE_READ
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+        - $ref: "#/components/parameters/Sort"
+        - name: q
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Role page.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RolePage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags:
+        - Roles
+      operationId: createRole
+      summary: Create a role.
+      x-permissions:
+        - ROLE_CREATE
+      security:
+        - cookieAuth: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoleWriteRequest"
+      responses:
+        "201":
+          description: Created role.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Role"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/roles/{roleId}:
+    get:
+      tags:
+        - Roles
+      operationId: getRole
+      summary: Get a role by ID.
+      x-permissions:
+        - ROLE_READ
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RoleId"
+      responses:
+        "200":
+          description: Role details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Role"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    patch:
+      tags:
+        - Roles
+      operationId: updateRole
+      summary: Update a role.
+      x-permissions:
+        - ROLE_UPDATE
+      security:
+        - cookieAuth: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/RoleId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RolePatchRequest"
+      responses:
+        "200":
+          description: Updated role.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Role"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    delete:
+      tags:
+        - Roles
+      operationId: deleteRole
+      summary: Delete a role.
+      x-permissions:
+        - ROLE_DELETE
+      security:
+        - cookieAuth: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/RoleId"
+      responses:
+        "204":
+          description: Role deleted.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/roles/{roleId}/permissions:
+    get:
+      tags:
+        - Roles
+      operationId: getRolePermissions
+      summary: Get permissions assigned to a role.
+      x-permissions:
+        - ROLE_PERMISSION_READ
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RoleId"
+      responses:
+        "200":
+          description: Role permissions.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Permission"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    put:
+      tags:
+        - Roles
+      operationId: replaceRolePermissions
+      summary: Replace permissions assigned to a role.
+      x-permissions:
+        - ROLE_PERMISSION_UPDATE
+      security:
+        - cookieAuth: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/RoleId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssignPermissionsRequest"
+      responses:
+        "200":
+          description: Updated role permissions.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Permission"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/permissions:
+    get:
+      tags:
+        - Permissions
+      operationId: listPermissions
+      summary: List permissions.
+      x-permissions:
+        - PERMISSION_READ
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: module
+          in: query
+          schema:
+            type: string
+        - name: q
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Permission catalog.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Permission"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/permissions/matrix:
+    get:
+      tags:
+        - Permissions
+      operationId: getPermissionMatrix
+      summary: Get permissions grouped by module and role.
+      x-permissions:
+        - PERMISSION_MATRIX_READ
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Permission matrix.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PermissionMatrix"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/sessions:
+    get:
+      tags:
+        - Sessions
+      operationId: listSessions
+      summary: List active sessions across users.
+      x-permissions:
+        - SESSION_READ
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+        - $ref: "#/components/parameters/Sort"
+        - name: userId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: active
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Session page.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/sessions/{sessionId}:
+    delete:
+      tags:
+        - Sessions
+      operationId: revokeSession
+      summary: Revoke a session by ID.
+      x-permissions:
+        - SESSION_REVOKE
+      security:
+        - cookieAuth: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "204":
+          description: Session revoked.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/audit-events:
+    get:
+      tags:
+        - Audit
+      operationId: listAuditEvents
+      summary: Search audit events.
+      x-permissions:
+        - AUDIT_READ
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+        - $ref: "#/components/parameters/Sort"
+        - name: actorUserId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: action
+          in: query
+          schema:
+            type: string
+        - name: resourceType
+          in: query
+          schema:
+            type: string
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: Audit event page.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditEventPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/audit-events/{id}:
+    get:
+      tags:
+        - Audit
+      operationId: getAuditEvent
+      summary: Get an audit event by ID.
+      x-permissions:
+        - AUDIT_READ
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Audit event details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditEvent"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/audit-events/export:
+    post:
+      tags:
+        - Audit
+      operationId: exportAuditEvents
+      summary: Export audit events.
+      x-permissions:
+        - AUDIT_EXPORT
+      security:
+        - cookieAuth: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuditExportRequest"
+      responses:
+        "202":
+          description: Export accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExportJob"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/audit-events/verify-integrity:
+    post:
+      tags:
+        - Audit
+      operationId: verifyAuditIntegrity
+      summary: Verify audit log hash-chain integrity.
+      x-permissions:
+        - AUDIT_VERIFY
+      security:
+        - cookieAuth: []
+          csrfHeader: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuditIntegrityRequest"
+      responses:
+        "200":
+          description: Integrity verification result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditIntegrityResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/security-events:
+    get:
+      tags:
+        - SecurityEvents
+      operationId: listSecurityEvents
+      summary: Search security events.
+      x-permissions:
+        - SECURITY_EVENT_READ
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+        - $ref: "#/components/parameters/Sort"
+        - name: severity
+          in: query
+          schema:
+            $ref: "#/components/schemas/SecurityEventSeverity"
+        - name: acknowledged
+          in: query
+          schema:
+            type: boolean
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: Security event page.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SecurityEventPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/security-events/{id}/acknowledge:
+    post:
+      tags:
+        - SecurityEvents
+      operationId: acknowledgeSecurityEvent
+      summary: Acknowledge a security event.
+      x-permissions:
+        - SECURITY_EVENT_ACKNOWLEDGE
+      security:
+        - cookieAuth: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AcknowledgeSecurityEventRequest"
+      responses:
+        "200":
+          description: Acknowledged security event.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SecurityEvent"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/settings:
+    get:
+      tags:
+        - Settings
+      operationId: getSettings
+      summary: Get portal settings.
+      x-permissions:
+        - SETTINGS_READ
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Current settings.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    patch:
+      tags:
+        - Settings
+      operationId: updateSettings
+      summary: Update portal settings.
+      x-permissions:
+        - SETTINGS_UPDATE
+      security:
+        - cookieAuth: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SettingsPatchRequest"
+      responses:
+        "200":
+          description: Updated settings.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/dashboard/summary:
+    get:
+      tags:
+        - Dashboard
+      operationId: getDashboardSummary
+      summary: Get dashboard summary cards for the current user.
+      x-permissions:
+        - DASHBOARD_READ
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Dashboard summary.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: PORTALSESSION
+      description: Opaque server-side session cookie.
+    csrfHeader:
+      type: apiKey
+      in: header
+      name: X-XSRF-TOKEN
+      description: CSRF token required for unsafe same-origin requests.
+  headers:
+    XRateLimitLimit:
+      description: Maximum requests allowed in the current rate-limit window.
+      schema:
+        type: integer
+        minimum: 0
+    XRateLimitRemaining:
+      description: Remaining requests in the current rate-limit window.
+      schema:
+        type: integer
+        minimum: 0
+    XRateLimitReset:
+      description: UTC epoch seconds when the current rate-limit window resets.
+      schema:
+        type: integer
+        minimum: 0
+    RetryAfter:
+      description: Seconds to wait before retrying after a rate limit response.
+      schema:
+        type: integer
+        minimum: 0
+  parameters:
+    Page:
+      name: page
+      in: query
+      description: Zero-based page index.
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    Size:
+      name: size
+      in: query
+      description: Page size.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 20
+    Sort:
+      name: sort
+      in: query
+      description: Sort expression such as `createdAt,desc`. Repeat for multiple fields.
+      schema:
+        type: array
+        items:
+          type: string
+      style: form
+      explode: true
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    RoleId:
+      name: roleId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    SessionId:
+      name: sessionId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 16
+        maxLength: 128
+    FactorId:
+      name: factorId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  requestBodies:
+    UserActionRequest:
+      required: false
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/UserActionRequest"
+  responses:
+    BadRequest:
+      description: Malformed request syntax, invalid parameter shape, or unreadable body.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    Unauthorized:
+      description: Missing, expired, or invalid authenticated session.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    Forbidden:
+      description: Authenticated principal lacks the required permission or CSRF token.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    NotFound:
+      description: Requested resource was not found.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    Conflict:
+      description: Request conflicts with current resource state.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    UnprocessableEntity:
+      description: Request is syntactically valid but violates validation rules.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    TooManyRequests:
+      description: Rate limit exceeded.
+      headers:
+        X-RateLimit-Limit:
+          $ref: "#/components/headers/XRateLimitLimit"
+        X-RateLimit-Remaining:
+          $ref: "#/components/headers/XRateLimitRemaining"
+        X-RateLimit-Reset:
+          $ref: "#/components/headers/XRateLimitReset"
+        Retry-After:
+          $ref: "#/components/headers/RetryAfter"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    InternalServerError:
+      description: Unexpected server error.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    UserActionCompleted:
+      description: User action completed.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ActionResult"
+    UserActionAccepted:
+      description: User action accepted for asynchronous processing.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ActionResult"
+  schemas:
+    ProblemDetail:
+      type: object
+      description: RFC 9457 problem details object.
+      additionalProperties: true
+      required:
+        - type
+        - title
+        - status
+      properties:
+        type:
+          type: string
+          format: uri-reference
+          default: about:blank
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 100
+          maximum: 599
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri-reference
+        code:
+          type: string
+          description: Stable application error code.
+        traceId:
+          type: string
+          description: Correlation identifier for diagnostics.
+        errors:
+          type: array
+          description: Field-level validation errors.
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - field
+              - message
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+              code:
+                type: string
+    PageRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        page:
+          type: integer
+          minimum: 0
+          default: 0
+        size:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 20
+        sort:
+          type: array
+          items:
+            type: string
+    PageResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - page
+        - size
+        - totalElements
+        - totalPages
+        - numberOfElements
+      properties:
+        page:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        totalElements:
+          type: integer
+          format: int64
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 0
+        numberOfElements:
+          type: integer
+          minimum: 0
+        first:
+          type: boolean
+        last:
+          type: boolean
+    UserStatus:
+      type: string
+      enum:
+        - ACTIVE
+        - INACTIVE
+        - LOCKED
+        - PENDING
+    Language:
+      type: string
+      enum:
+        - fa-IR
+        - en-US
+    Theme:
+      type: string
+      enum:
+        - LIGHT
+        - DARK
+        - SYSTEM
+    Preferences:
+      type: object
+      additionalProperties: false
+      required:
+        - language
+        - theme
+        - timezone
+      properties:
+        language:
+          $ref: "#/components/schemas/Language"
+        theme:
+          $ref: "#/components/schemas/Theme"
+        timezone:
+          type: string
+          example: Asia/Tehran
+        density:
+          type: string
+          enum:
+            - COMFORTABLE
+            - COMPACT
+          default: COMFORTABLE
+    Permission:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - module
+        - action
+        - description
+      properties:
+        code:
+          type: string
+          pattern: "^[A-Z0-9_]+$"
+          example: USER_READ
+        module:
+          type: string
+          example: users
+        action:
+          type: string
+          example: read
+        description:
+          type: string
+        system:
+          type: boolean
+          default: true
+    Role:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - code
+        - name
+        - system
+        - permissions
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          pattern: "^[A-Z0-9_]+$"
+          example: ADMIN
+        name:
+          type: string
+        description:
+          type:
+            - string
+            - "null"
+        system:
+          type: boolean
+        permissions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Permission"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    User:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - username
+        - email
+        - displayName
+        - status
+        - preferences
+        - roles
+        - permissions
+        - mfaEnabled
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+          minLength: 3
+          maxLength: 80
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 160
+        status:
+          $ref: "#/components/schemas/UserStatus"
+        preferences:
+          $ref: "#/components/schemas/Preferences"
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/Role"
+        permissions:
+          type: array
+          items:
+            type: string
+            pattern: "^[A-Z0-9_]+$"
+        mfaEnabled:
+          type: boolean
+        lastLoginAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    Session:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - userId
+        - createdAt
+        - lastAccessedAt
+        - expiresAt
+        - current
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+          format: uuid
+        username:
+          type: string
+        ipAddress:
+          type: string
+        userAgent:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        lastAccessedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        revokedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        current:
+          type: boolean
+    AuditEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - occurredAt
+        - actor
+        - action
+        - resource
+        - outcome
+        - hash
+      properties:
+        id:
+          type: string
+          format: uuid
+        occurredAt:
+          type: string
+          format: date-time
+        actor:
+          $ref: "#/components/schemas/AuditActor"
+        action:
+          type: string
+          example: USER_UPDATED
+        resource:
+          $ref: "#/components/schemas/AuditResource"
+        outcome:
+          type: string
+          enum:
+            - SUCCESS
+            - FAILURE
+        ipAddress:
+          type: string
+        userAgent:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        previousHash:
+          type:
+            - string
+            - "null"
+        hash:
+          type: string
+    AuditActor:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum:
+            - USER
+            - SYSTEM
+            - SERVICE
+        userId:
+          type:
+            - string
+            - "null"
+          format: uuid
+        username:
+          type:
+            - string
+            - "null"
+    AuditResource:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          example: USER
+        id:
+          type:
+            - string
+            - "null"
+        displayName:
+          type:
+            - string
+            - "null"
+    SecurityEventSeverity:
+      type: string
+      enum:
+        - LOW
+        - MEDIUM
+        - HIGH
+        - CRITICAL
+    SecurityEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - occurredAt
+        - type
+        - severity
+        - acknowledged
+      properties:
+        id:
+          type: string
+          format: uuid
+        occurredAt:
+          type: string
+          format: date-time
+        type:
+          type: string
+          example: AUTH_BRUTE_FORCE_DETECTED
+        severity:
+          $ref: "#/components/schemas/SecurityEventSeverity"
+        userId:
+          type:
+            - string
+            - "null"
+          format: uuid
+        ipAddress:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+        acknowledged:
+          type: boolean
+        acknowledgedBy:
+          type:
+            - string
+            - "null"
+          format: uuid
+        acknowledgedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        acknowledgementNote:
+          type:
+            - string
+            - "null"
+    MfaFactor:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - type
+        - name
+        - enabled
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum:
+            - TOTP
+        name:
+          type: string
+        enabled:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        lastUsedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+    MfaSetup:
+      type: object
+      additionalProperties: false
+      required:
+        - factorId
+        - type
+        - secret
+        - otpAuthUri
+        - expiresAt
+      properties:
+        factorId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum:
+            - TOTP
+        secret:
+          type: string
+          description: Base32-encoded TOTP seed shown only during setup.
+        otpAuthUri:
+          type: string
+          format: uri
+        qrCodeSvg:
+          type: string
+          description: Optional SVG QR code data.
+        expiresAt:
+          type: string
+          format: date-time
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+        rememberDevice:
+          type: boolean
+          default: false
+    LoginResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - AUTHENTICATED
+            - MFA_REQUIRED
+        user:
+          $ref: "#/components/schemas/User"
+        session:
+          $ref: "#/components/schemas/Session"
+        mfaChallenge:
+          $ref: "#/components/schemas/MfaChallenge"
+    MfaChallenge:
+      type: object
+      additionalProperties: false
+      required:
+        - challengeId
+        - methods
+        - expiresAt
+      properties:
+        challengeId:
+          type: string
+        methods:
+          type: array
+          items:
+            type: string
+            enum:
+              - TOTP
+              - RECOVERY_CODE
+        expiresAt:
+          type: string
+          format: date-time
+    ForgotPasswordRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+    ResetPasswordRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - token
+        - newPassword
+      properties:
+        token:
+          type: string
+        newPassword:
+          type: string
+          format: password
+          minLength: 12
+    MfaVerifyRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - challengeId
+        - code
+      properties:
+        challengeId:
+          type: string
+        code:
+          type: string
+          minLength: 6
+          maxLength: 8
+        rememberDevice:
+          type: boolean
+          default: false
+    MfaRecoveryRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - challengeId
+        - recoveryCode
+      properties:
+        challengeId:
+          type: string
+        recoveryCode:
+          type: string
+        rememberDevice:
+          type: boolean
+          default: false
+    CsrfToken:
+      type: object
+      additionalProperties: false
+      required:
+        - headerName
+        - token
+      properties:
+        headerName:
+          type: string
+          const: X-XSRF-TOKEN
+        token:
+          type: string
+    UpdateMeRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 160
+        email:
+          type: string
+          format: email
+    PreferencesPatchRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        language:
+          $ref: "#/components/schemas/Language"
+        theme:
+          $ref: "#/components/schemas/Theme"
+        timezone:
+          type: string
+        density:
+          type: string
+          enum:
+            - COMFORTABLE
+            - COMPACT
+    ChangePasswordRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - currentPassword
+        - newPassword
+      properties:
+        currentPassword:
+          type: string
+          format: password
+        newPassword:
+          type: string
+          format: password
+          minLength: 12
+    MfaSetupRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          default: Authenticator app
+    MfaConfirmRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - factorId
+        - code
+      properties:
+        factorId:
+          type: string
+          format: uuid
+        code:
+          type: string
+          minLength: 6
+          maxLength: 8
+    MfaEnrollmentResult:
+      type: object
+      additionalProperties: false
+      required:
+        - factor
+        - recoveryCodes
+      properties:
+        factor:
+          $ref: "#/components/schemas/MfaFactor"
+        recoveryCodes:
+          type: array
+          items:
+            type: string
+    RecoveryCodeStatus:
+      type: object
+      additionalProperties: false
+      required:
+        - remainingCodes
+      properties:
+        remainingCodes:
+          type: integer
+          minimum: 0
+        lastRegeneratedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+    RecoveryCodes:
+      type: object
+      additionalProperties: false
+      required:
+        - recoveryCodes
+      properties:
+        recoveryCodes:
+          type: array
+          items:
+            type: string
+    PasswordConfirmationRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - password
+      properties:
+        password:
+          type: string
+          format: password
+    CreateUserRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - username
+        - email
+        - displayName
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 80
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 160
+        roleIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        sendInvite:
+          type: boolean
+          default: true
+        preferences:
+          $ref: "#/components/schemas/Preferences"
+    UpdateUserRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 160
+        status:
+          $ref: "#/components/schemas/UserStatus"
+        preferences:
+          $ref: "#/components/schemas/PreferencesPatchRequest"
+    UserActionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        reason:
+          type: string
+          maxLength: 500
+        notifyUser:
+          type: boolean
+          default: false
+    AssignRolesRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - roleIds
+      properties:
+        roleIds:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
+    RoleWriteRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - name
+      properties:
+        code:
+          type: string
+          pattern: "^[A-Z0-9_]+$"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: string
+          maxLength: 500
+    RolePatchRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type:
+            - string
+            - "null"
+          maxLength: 500
+    AssignPermissionsRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - permissionCodes
+      properties:
+        permissionCodes:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            pattern: "^[A-Z0-9_]+$"
+    PermissionMatrix:
+      type: object
+      additionalProperties: false
+      required:
+        - roles
+        - permissions
+        - assignments
+      properties:
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/Role"
+        permissions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Permission"
+        assignments:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - roleId
+              - permissionCode
+            properties:
+              roleId:
+                type: string
+                format: uuid
+              permissionCode:
+                type: string
+                pattern: "^[A-Z0-9_]+$"
+    ActionResult:
+      type: object
+      additionalProperties: false
+      required:
+        - message
+      properties:
+        message:
+          type: string
+        id:
+          type: string
+        completedAt:
+          type: string
+          format: date-time
+    SessionRevocationResult:
+      type: object
+      additionalProperties: false
+      required:
+        - revokedCount
+      properties:
+        revokedCount:
+          type: integer
+          minimum: 0
+    AuditExportRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - format
+      properties:
+        format:
+          type: string
+          enum:
+            - CSV
+            - JSON
+        filters:
+          type: object
+          additionalProperties: true
+    ExportJob:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - status
+        - requestedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+            - QUEUED
+            - RUNNING
+            - COMPLETED
+            - FAILED
+        requestedAt:
+          type: string
+          format: date-time
+    AuditIntegrityRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+    AuditIntegrityResult:
+      type: object
+      additionalProperties: false
+      required:
+        - valid
+        - checkedEvents
+      properties:
+        valid:
+          type: boolean
+        checkedEvents:
+          type: integer
+          minimum: 0
+        firstInvalidEventId:
+          type:
+            - string
+            - "null"
+          format: uuid
+        verifiedAt:
+          type: string
+          format: date-time
+    AcknowledgeSecurityEventRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        note:
+          type: string
+          maxLength: 1000
+    Settings:
+      type: object
+      additionalProperties: false
+      required:
+        - defaultLanguage
+        - defaultTheme
+        - sessionTimeoutMinutes
+        - mfaRequiredForAdmins
+        - auditRetentionDays
+      properties:
+        defaultLanguage:
+          $ref: "#/components/schemas/Language"
+        defaultTheme:
+          $ref: "#/components/schemas/Theme"
+        sessionTimeoutMinutes:
+          type: integer
+          minimum: 5
+          maximum: 1440
+        mfaRequiredForAdmins:
+          type: boolean
+        auditRetentionDays:
+          type: integer
+          minimum: 30
+        loginRateLimitPerMinute:
+          type: integer
+          minimum: 1
+    SettingsPatchRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        defaultLanguage:
+          $ref: "#/components/schemas/Language"
+        defaultTheme:
+          $ref: "#/components/schemas/Theme"
+        sessionTimeoutMinutes:
+          type: integer
+          minimum: 5
+          maximum: 1440
+        mfaRequiredForAdmins:
+          type: boolean
+        auditRetentionDays:
+          type: integer
+          minimum: 30
+        loginRateLimitPerMinute:
+          type: integer
+          minimum: 1
+    DashboardSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - activeUsers
+        - activeSessions
+        - securityEvents
+        - auditEventsToday
+      properties:
+        activeUsers:
+          type: integer
+          minimum: 0
+        activeSessions:
+          type: integer
+          minimum: 0
+        securityEvents:
+          type: object
+          additionalProperties: false
+          required:
+            - unacknowledged
+            - critical
+          properties:
+            unacknowledged:
+              type: integer
+              minimum: 0
+            critical:
+              type: integer
+              minimum: 0
+        auditEventsToday:
+          type: integer
+          minimum: 0
+    UserPage:
+      allOf:
+        - $ref: "#/components/schemas/PageResponse"
+        - type: object
+          additionalProperties: false
+          required:
+            - content
+          properties:
+            content:
+              type: array
+              items:
+                $ref: "#/components/schemas/User"
+    RolePage:
+      allOf:
+        - $ref: "#/components/schemas/PageResponse"
+        - type: object
+          additionalProperties: false
+          required:
+            - content
+          properties:
+            content:
+              type: array
+              items:
+                $ref: "#/components/schemas/Role"
+    SessionPage:
+      allOf:
+        - $ref: "#/components/schemas/PageResponse"
+        - type: object
+          additionalProperties: false
+          required:
+            - content
+          properties:
+            content:
+              type: array
+              items:
+                $ref: "#/components/schemas/Session"
+    AuditEventPage:
+      allOf:
+        - $ref: "#/components/schemas/PageResponse"
+        - type: object
+          additionalProperties: false
+          required:
+            - content
+          properties:
+            content:
+              type: array
+              items:
+                $ref: "#/components/schemas/AuditEvent"
+    SecurityEventPage:
+      allOf:
+        - $ref: "#/components/schemas/PageResponse"
+        - type: object
+          additionalProperties: false
+          required:
+            - content
+          properties:
+            content:
+              type: array
+              items:
+                $ref: "#/components/schemas/SecurityEvent"
