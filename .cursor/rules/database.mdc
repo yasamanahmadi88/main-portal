@@ -1,0 +1,9 @@
+---
+description: Database and Flyway rules
+globs:
+  - backend/**/db/migration/**
+  - infrastructure/database/**
+---
+- Flyway is schema source of truth; UUID PKs; UTC timestamps; optimistic locking.
+- Hash reset tokens and recovery codes; encrypt TOTP secrets.
+- Runtime role must not UPDATE/DELETE audit tables.

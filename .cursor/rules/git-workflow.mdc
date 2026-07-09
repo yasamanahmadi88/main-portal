@@ -1,0 +1,8 @@
+---
+description: Git workflow
+globs:
+alwaysApply: true
+---
+- Branch: `cursor/complete-enterprise-portal`; base: `main`.
+- No force-push; no history rewrite; no direct pushes of incomplete work to main.
+- Before commit: status, diff, diff --check; no secrets staged.
