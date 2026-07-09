@@ -40,9 +40,14 @@ future tables inherit the same grants.
 
 ## Local development
 
-Docker Compose / Testcontainers spin up a single super-user PostgreSQL, so both
-roles are effectively the same DB user. `V5__db_grants_notes.sql` skips its
-grants if the runtime role does not exist, keeping local runs frictionless.
+Docker Compose mounts `infrastructure/database/init/01-roles.sh` into the
+official Postgres image entrypoint. On first volume start that script creates
+the `PORTAL_MIGRATION_USER` and `PORTAL_APP_USER` roles from environment
+variables (via `psql -v` + `format`/`\gexec`, not PL/pgSQL `DO` blocks — psql
+`:'variables'` are not expanded inside `DO $$` bodies).
+
+Testcontainers unit tests may still use a single super-user PostgreSQL.
+`V5__db_grants_notes.sql` skips grants if the runtime role does not exist.
 
 ## Rotating credentials
 

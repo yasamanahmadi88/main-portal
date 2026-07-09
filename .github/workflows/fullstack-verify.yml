@@ -129,6 +129,28 @@ jobs:
             fi
           done
 
+          # Fail fast if init did not create Flyway / app roles (do not print passwords).
+          docker compose --env-file .env logs --no-color postgres | tee "$REPORT_DIR/postgres-init.txt" | tail -80
+          if ! grep -q "Portal database roles provisioned successfully" "$REPORT_DIR/postgres-init.txt"; then
+            echo "ERROR: postgres role bootstrap did not complete" >&2
+            exit 1
+          fi
+          MIG_USER="$(grep '^POSTGRES_MIGRATION_USER=' .env | cut -d= -f2-)"
+          APP_USER="$(grep '^POSTGRES_USER=' .env | cut -d= -f2-)"
+          ROLES="$(docker compose --env-file .env exec -T postgres \
+            psql -U portal_superuser -d portal -tAc \
+            "SELECT string_agg(rolname, ',' ORDER BY rolname) FROM pg_roles WHERE rolname IN ('${MIG_USER}','${APP_USER}');" \
+            | tr -d '[:space:]')"
+          echo "provisioned_roles=${ROLES}" | tee "$REPORT_DIR/db-roles.txt"
+          echo "$ROLES" | grep -q "${MIG_USER}" || { echo "missing migration role ${MIG_USER}" >&2; exit 1; }
+          echo "$ROLES" | grep -q "${APP_USER}" || { echo "missing app role ${APP_USER}" >&2; exit 1; }
+          # Auth probe as migration role (password via env inside container, not echoed).
+          docker compose --env-file .env exec -T \
+            -e PGPASSWORD="$(grep '^POSTGRES_MIGRATION_PASSWORD=' .env | cut -d= -f2-)" \
+            postgres \
+            psql -U "${MIG_USER}" -d portal -tAc "SELECT current_user;" \
+            | tee -a "$REPORT_DIR/db-roles.txt" | grep -qx "${MIG_USER}"
+
           docker compose --env-file .env -f compose.yaml up -d --no-deps backend
           for i in $(seq 1 72); do
             docker compose --env-file .env ps --format json > "$REPORT_DIR/ps.json" || true

@@ -26,7 +26,7 @@ for any deployment target.
 | `.env` / `.env.example`       | All configuration is read from environment variables.  Never commit `.env`. |
 | `infrastructure/docker/**`    | Multi-stage Dockerfiles for backend and frontend images.            |
 | `infrastructure/nginx/**`     | SPA + reverse-proxy configuration; served by the frontend image.    |
-| `infrastructure/database/init/*.sql` | Bootstraps the `portal_migration` and `portal_app` roles on first-start. |
+| `infrastructure/database/init/01-roles.sh` | Bootstraps the migration and app PostgreSQL roles on first-start. |
 
 Networks:
 
