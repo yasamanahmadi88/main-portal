@@ -12,12 +12,11 @@ import com.company.portal.support.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
@@ -31,8 +30,15 @@ import org.springframework.test.web.servlet.MockMvc;
 class LiveSecurityIntegrationTest extends AbstractIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
-  @Autowired private TestRestTemplate restTemplate;
   @Autowired private JdbcTemplate jdbcTemplate;
+
+  @DynamicPropertySource
+  static void bootstrapAdmin(DynamicPropertyRegistry registry) {
+    registry.add("portal.bootstrap.enabled", () -> "true");
+    registry.add("portal.bootstrap.admin-email", () -> "admin@example.com");
+    registry.add("portal.bootstrap.admin-password", () -> "ChangeMeNow!123");
+    registry.add("portal.bootstrap.admin-display-name", () -> "Test Admin");
+  }
 
   @Test
   void csrfIsRequiredForLogin() throws Exception {
@@ -65,9 +71,8 @@ class LiveSecurityIntegrationTest extends AbstractIntegrationTest {
   }
 
   @Test
-  void anonymousCannotAccessUsersApi() {
-    ResponseEntity<String> response = restTemplate.getForEntity("/api/v1/users", String.class);
-    assertThat(response.getStatusCode()).isIn(HttpStatus.UNAUTHORIZED, HttpStatus.FORBIDDEN);
+  void anonymousCannotAccessUsersApi() throws Exception {
+    mockMvc.perform(get("/api/v1/users")).andExpect(status().isUnauthorized());
   }
 
   @Test
@@ -82,7 +87,7 @@ class LiveSecurityIntegrationTest extends AbstractIntegrationTest {
                     {"username":"missing-user@example.com","password":"wrong-password","rememberDevice":false}
                     """))
         .andExpect(status().isUnauthorized())
-        .andExpect(jsonPath("$.title").value("Authentication failed"));
+        .andExpect(jsonPath("$.detail").value("Invalid credentials"));
   }
 
   @Test
