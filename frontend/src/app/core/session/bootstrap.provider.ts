@@ -1,4 +1,9 @@
-import { EnvironmentProviders, inject, makeEnvironmentProviders, provideAppInitializer } from '@angular/core';
+import {
+  EnvironmentProviders,
+  inject,
+  makeEnvironmentProviders,
+  provideAppInitializer
+} from '@angular/core';
 
 import { CsrfService } from '@core/authentication/csrf.service';
 import { AuthService } from '@core/authentication/auth.service';
@@ -12,6 +17,10 @@ export function provideAppInitialization(): EnvironmentProviders {
       const auth = inject(AuthService);
       const prefs = inject(PreferencesSyncService);
       const logger = inject(LoggerService);
+      // Effects must be created in an injection context. Call install() before
+      // any await — otherwise Angular throws NG0203 and APP_INITIALIZER fails,
+      // leaving the SPA stuck on the static Loading placeholder.
+      prefs.install();
       try {
         // Never block SPA mount indefinitely if the API is slow/unreachable.
         await Promise.race([
@@ -26,7 +35,6 @@ export function provideAppInitialization(): EnvironmentProviders {
       } catch (err) {
         logger.warn('bootstrap.failed', { message: (err as Error).message });
       }
-      prefs.install();
     })
   ]);
 }
