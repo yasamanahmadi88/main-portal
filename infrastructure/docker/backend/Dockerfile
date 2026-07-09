@@ -61,7 +61,8 @@ LABEL org.opencontainers.image.title="portal-backend" \
 
 # `wget` for healthchecks; `tini` for correct signal handling.  Everything
 # else is intentionally left out to keep the attack surface small.
-RUN apk add --no-cache tini wget ca-certificates tzdata && \
+RUN apk upgrade --no-cache && \
+    apk add --no-cache tini wget ca-certificates tzdata && \
     addgroup -S -g 10001 portal && \
     adduser -S -u 10001 -G portal -H -s /sbin/nologin portal && \
     mkdir -p /app /app/config /tmp && \
