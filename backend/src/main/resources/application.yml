@@ -1,0 +1,21 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: main-portal
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+
+portal:
+  application-name: ${PORTAL_APP_NAME:main-portal}
+  api-version: ${PORTAL_API_VERSION:0.1.0}
+  cors:
+    allowed-origins: ${PORTAL_CORS_ORIGINS:http://localhost:5173}

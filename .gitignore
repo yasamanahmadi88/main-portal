@@ -1,0 +1,97 @@
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# Build outputs
+dist/
+build/
+out/
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+replay_pid*
+
+# Coverage
+coverage/
+*.lcov
+.nyc_output/
+jacoco.exec
+jacoco-report/
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+*.pem
+*.key
+*.p12
+*.jks
+secrets/
+credentials/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+.factorypath
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Test / temp
+tmp/
+temp/
+.tmp/
+.cache/
+.turbo/
+.parcel-cache/
+
+# Docker
+*.pid
+
+# Maven wrapper local
+.mvn/wrapper/maven-wrapper.jar
+
+# Frontend tooling
+.next/
+.nuxt/
+.svelte-kit/
+.vite/
+*.tsbuildinfo
+
+# Python (scripts)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Generated reports
+reports/
+bandit-report.json
+dependency-check-report/
