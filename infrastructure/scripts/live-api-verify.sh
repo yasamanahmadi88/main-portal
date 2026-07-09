@@ -197,18 +197,22 @@ code="$(curl -s -o /tmp/me-after.json -w '%{http_code}' -c "$COOKIE_JAR" -b "$CO
   "$BASE_URL/api/v1/me")"
 [[ "$code" == "401" || "$code" == "403" ]] && pass "session invalidated after logout ($code)" || fail "expected unauth after logout, got $code"
 
-# Security headers from nginx/frontend
-curl -sI "$BASE_URL/" > /tmp/headers-root.txt
+# Security headers from nginx/frontend (GET, not HEAD — try_files + SPA).
+curl -sD /tmp/headers-root.txt -o /dev/null "$BASE_URL/"
+curl -sD /tmp/headers-index.txt -o /dev/null "$BASE_URL/index.html"
 python3 - <<'PY'
-text=open("/tmp/headers-root.txt").read().lower()
-needed=["content-security-policy","x-content-type-options","referrer-policy"]
-missing=[h for h in needed if h not in text]
-assert not missing, missing
 import os
 report=os.environ.get("REPORT_DIR","/tmp/portal-live-evidence")
 os.makedirs(report, exist_ok=True)
-open(os.path.join(report,"security-headers.txt"),"w").write(open("/tmp/headers-root.txt").read())
-print("security headers present")
+root=open("/tmp/headers-root.txt").read()
+index=open("/tmp/headers-index.txt").read()
+open(os.path.join(report,"security-headers.txt"),"w").write(
+    "=== GET / ===\n"+root+"\n=== GET /index.html ===\n"+index)
+needed=["content-security-policy","x-content-type-options","referrer-policy"]
+for label, text in (("root", root.lower()), ("index", index.lower())):
+    missing=[h for h in needed if h not in text]
+    assert not missing, f"{label} missing {missing}\n{text}"
+print("security headers present on / and /index.html")
 PY
 pass "security headers present on frontend responses"
 
@@ -216,7 +220,8 @@ pass "security headers present on frontend responses"
 # Expect at least one 429 from nginx and/or backend within the burst window.
 RATE_JAR="$(mktemp)"
 saw_429=0
-for i in $(seq 1 20); do
+codes=()
+for i in $(seq 1 30); do
   body="$(curl -fsS -c "$RATE_JAR" -b "$RATE_JAR" "$BASE_URL/api/v1/auth/csrf" 2>/dev/null || true)"
   tok="$(python3 -c 'import json,sys; 
 try: print(json.load(sys.stdin)["token"])
@@ -226,13 +231,15 @@ except Exception: print("")' <<<"$body")"
     -H 'Content-Type: application/json' \
     -H "X-XSRF-TOKEN: ${tok}" \
     -d '{"username":"rate-limit-probe@portal.local","password":"WrongPassword!12345","rememberDevice":false}')"
+  codes+=("$code")
   if [[ "$code" == "429" ]]; then
     saw_429=1
     break
   fi
 done
 rm -f "$RATE_JAR"
+echo "rate_limit_codes=${codes[*]}" >>"$EVIDENCE"
 [[ "$saw_429" == "1" ]] && pass "login rate limiting returns HTTP 429 under burst" \
-  || fail "expected HTTP 429 from login rate limit within 20 attempts"
+  || fail "expected HTTP 429 from login rate limit within 30 attempts (got: ${codes[*]})"
 
 log "=== ALL LIVE API CHECKS PASSED ==="

@@ -118,7 +118,10 @@ jobs:
           docker compose --env-file .env -f compose.yaml -f compose.observability.yaml config -q
 
       - name: Build images
-        run: docker compose --env-file .env -f compose.yaml build
+        run: |
+          # Rebuild frontend without cache so nginx config COPY layers are never stale.
+          docker compose --env-file .env -f compose.yaml build --no-cache frontend
+          docker compose --env-file .env -f compose.yaml build
 
       - name: Start stack
         run: |
