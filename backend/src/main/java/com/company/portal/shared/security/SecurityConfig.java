@@ -20,6 +20,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -91,14 +93,27 @@ public class SecurityConfig {
         return csrfRepo;
     }
 
+    /**
+     * Explicit repository so login/logout can persist or clear the SecurityContext
+     * into the Spring Session Redis store (Security 6+ no longer auto-saves contexts
+     * set outside AuthenticationFilter).
+     */
+    @Bean
+    public SecurityContextRepository securityContextRepository() {
+        return new HttpSessionSecurityContextRepository();
+    }
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
-                                                   CookieCsrfTokenRepository csrfRepo) throws Exception {
+                                                   CookieCsrfTokenRepository csrfRepo,
+                                                   SecurityContextRepository securityContextRepository)
+            throws Exception {
         http
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(csrfRepo)
                         .ignoringRequestMatchers("/actuator/**"))
+                .securityContext(sc -> sc.securityContextRepository(securityContextRepository))
                 .sessionManagement(this::configureSessions)
                 .headers(this::configureHeaders)
                 .exceptionHandling(ex -> ex

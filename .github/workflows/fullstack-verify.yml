@@ -68,6 +68,15 @@ jobs:
           MIG_PW="Mig$(openssl rand -hex 16)Aa1"
           SUPER_PW="Super$(openssl rand -hex 16)Aa1"
           REDIS_PW="Redis$(openssl rand -hex 16)Aa1"
+          # Mask secrets so they never appear in Actions logs / step env dumps.
+          {
+            echo "::add-mask::${MFA_KEY}"
+            echo "::add-mask::${BOOT_PW}"
+            echo "::add-mask::${APP_PW}"
+            echo "::add-mask::${MIG_PW}"
+            echo "::add-mask::${SUPER_PW}"
+            echo "::add-mask::${REDIS_PW}"
+          }
           {
             echo "MFA_KEY=${MFA_KEY}"
             echo "BOOT_PW=${BOOT_PW}"

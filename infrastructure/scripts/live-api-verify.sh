@@ -123,9 +123,12 @@ print("cookie flags captured; httponly+samesite present; secure=", "secure" in j
 PY
 pass "session Set-Cookie includes HttpOnly and SameSite"
 
-csrf
-me="$(curl -fsS -c "$COOKIE_JAR" -b "$COOKIE_JAR" -H "$(hdr)" "$BASE_URL/api/v1/me")"
-echo "$me" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d.get("email") or d.get("username"); print("me ok")'
+# Authenticated GETs must not refresh CSRF first in a way that replaces the
+# session cookie; use the jar from login and omit CSRF header on safe methods.
+code="$(curl -s -o /tmp/me.json -w '%{http_code}' -c "$COOKIE_JAR" -b "$COOKIE_JAR" \
+  "$BASE_URL/api/v1/me")"
+[[ "$code" == "200" ]] || { cat /tmp/me.json >>"$EVIDENCE"; fail "GET /api/v1/me expected 200 got $code"; }
+python3 -c 'import json; d=json.load(open("/tmp/me.json")); assert d.get("email") or d.get("username"); print("me ok")'
 pass "GET /api/v1/me authenticated"
 
 # No JWT in JSON responses
@@ -139,9 +142,10 @@ PY
 pass "login JSON does not contain JWT-looking tokens"
 
 # Sessions list
-csrf
-sessions="$(curl -fsS -c "$COOKIE_JAR" -b "$COOKIE_JAR" -H "$(hdr)" "$BASE_URL/api/v1/me/sessions" || true)"
-echo "$sessions" | head -c 200 >>"$EVIDENCE"
+code="$(curl -s -o /tmp/sessions.json -w '%{http_code}' -c "$COOKIE_JAR" -b "$COOKIE_JAR" \
+  "$BASE_URL/api/v1/me/sessions")"
+[[ "$code" == "200" ]] || { cat /tmp/sessions.json >>"$EVIDENCE"; fail "sessions list expected 200 got $code"; }
+echo "$(head -c 200 /tmp/sessions.json)" >>"$EVIDENCE"
 pass "session listing endpoint reachable"
 
 # Forgot password generic response
@@ -153,7 +157,20 @@ code="$(curl -s -o /tmp/forgot.json -w '%{http_code}' -c "$COOKIE_JAR" -b "$COOK
   -d '{"email":"unknown-user@example.com"}')"
 [[ "$code" == "202" || "$code" == "200" ]] && pass "forgot-password generic response HTTP $code" || fail "forgot-password unexpected $code"
 
-# Audit integrity (SUPER_ADMIN)
+# Re-login for authenticated privileged checks (cookie jar may have been rotated).
+csrf
+code="$(curl -s -o /tmp/login-ok3.json -w '%{http_code}' -c "$COOKIE_JAR" -b "$COOKIE_JAR" \
+  -X POST "$BASE_URL/api/v1/auth/login" \
+  -H 'Content-Type: application/json' \
+  -H "$(hdr)" \
+  -d "$(python3 - <<PY
+import json,os
+print(json.dumps({"username":os.environ["ADMIN_EMAIL"],"password":os.environ["ADMIN_PASSWORD"],"rememberDevice":False}))
+PY
+)")"
+[[ "$code" == "200" ]] || fail "re-login for audit checks failed HTTP $code"
+
+# Audit integrity (SUPER_ADMIN) — refresh CSRF without dropping session cookie
 csrf
 code="$(curl -s -o /tmp/audit-verify.json -w '%{http_code}' -c "$COOKIE_JAR" -b "$COOKIE_JAR" \
   -X POST "$BASE_URL/api/v1/audit-events/verify-integrity" \
@@ -187,9 +204,8 @@ code="$(curl -s -o /dev/null -w '%{http_code}' -c "$COOKIE_JAR" -b "$COOKIE_JAR"
 [[ "$code" == "204" || "$code" == "200" ]] && pass "logout HTTP $code" || fail "logout got $code"
 
 # Session invalid after logout
-csrf
 code="$(curl -s -o /tmp/me-after.json -w '%{http_code}' -c "$COOKIE_JAR" -b "$COOKIE_JAR" \
-  -H "$(hdr)" "$BASE_URL/api/v1/me")"
+  "$BASE_URL/api/v1/me")"
 [[ "$code" == "401" || "$code" == "403" ]] && pass "session invalidated after logout ($code)" || fail "expected unauth after logout, got $code"
 
 # Security headers from nginx/frontend

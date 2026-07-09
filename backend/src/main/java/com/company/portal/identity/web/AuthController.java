@@ -7,6 +7,7 @@ import com.company.portal.identity.application.PasswordService;
 import com.company.portal.identity.application.UserMapper;
 import com.company.portal.identity.security.RequestContext;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -53,8 +54,10 @@ public class AuthController {
     }
 
     @PostMapping(value = "/login", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public LoginResponse login(@RequestBody @Valid LoginRequest request, HttpServletRequest http) {
-        LoginOutcome outcome = authService.login(request.username(), request.password(), http);
+    public LoginResponse login(@RequestBody @Valid LoginRequest request,
+                               HttpServletRequest http,
+                               HttpServletResponse response) {
+        LoginOutcome outcome = authService.login(request.username(), request.password(), http, response);
         if (outcome.status() == LoginOutcome.Status.MFA_REQUIRED) {
             return LoginResponse.mfaRequired(new MfaChallenge(
                     outcome.challengeId(), List.of("TOTP", "RECOVERY_CODE"),
@@ -64,8 +67,8 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(HttpServletRequest request) {
-        authService.logout(request);
+    public ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) {
+        authService.logout(request, response);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 
@@ -85,19 +88,22 @@ public class AuthController {
     }
 
     @PostMapping(value = "/mfa/verify", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public LoginResponse verifyMfa(@RequestBody @Valid MfaVerifyRequest request, HttpServletRequest http) {
+    public LoginResponse verifyMfa(@RequestBody @Valid MfaVerifyRequest request,
+                                   HttpServletRequest http,
+                                   HttpServletResponse response) {
         java.util.UUID userId = challengeStore.peek(request.challengeId());
         boolean ok = userId != null && mfaService.verifyTotp(userId, request.code());
-        var user = authService.completeMfaLogin(request.challengeId(), ok, http);
+        var user = authService.completeMfaLogin(request.challengeId(), ok, http, response);
         return LoginResponse.authenticated(userMapper.toDto(user));
     }
 
     @PostMapping(value = "/mfa/recovery", consumes = MediaType.APPLICATION_JSON_VALUE)
     public LoginResponse verifyRecoveryCode(@RequestBody @Valid MfaRecoveryRequest request,
-                                            HttpServletRequest http) {
+                                            HttpServletRequest http,
+                                            HttpServletResponse response) {
         java.util.UUID userId = challengeStore.peek(request.challengeId());
         boolean ok = userId != null && mfaService.consumeRecoveryCode(userId, request.recoveryCode());
-        var user = authService.completeMfaLogin(request.challengeId(), ok, http);
+        var user = authService.completeMfaLogin(request.challengeId(), ok, http, response);
         return LoginResponse.authenticated(userMapper.toDto(user));
     }
 

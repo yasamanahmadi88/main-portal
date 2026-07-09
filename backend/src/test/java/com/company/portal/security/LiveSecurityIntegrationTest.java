@@ -71,6 +71,29 @@ class LiveSecurityIntegrationTest extends AbstractIntegrationTest {
   }
 
   @Test
+  void loginPersistsSecurityContextForSubsequentMeRequest() throws Exception {
+    var login =
+        mockMvc
+            .perform(
+                post("/api/v1/auth/login")
+                    .with(csrf())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        """
+                        {"username":"admin@example.com","password":"ChangeMeNow!123","rememberDevice":false}
+                        """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("AUTHENTICATED"))
+            .andReturn();
+
+    String sessionCookie = login.getResponse().getCookie("PORTAL_SESSION").getValue();
+    mockMvc
+        .perform(get("/api/v1/me").cookie(new jakarta.servlet.http.Cookie("PORTAL_SESSION", sessionCookie)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.email").value("admin@example.com"));
+  }
+
+  @Test
   void anonymousCannotAccessUsersApi() throws Exception {
     mockMvc.perform(get("/api/v1/users")).andExpect(status().isUnauthorized());
   }

@@ -20,6 +20,7 @@ import com.company.portal.shared.config.PortalProperties;
 import com.company.portal.shared.error.ErrorCodes;
 import com.company.portal.shared.error.PortalException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.Map;
@@ -34,6 +35,7 @@ import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.authentication.session.SessionFixationProtectionEvent;
+import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -70,6 +72,7 @@ public class AuthenticationService {
     private final LoginChallengeStore challengeStore;
     private final SessionService sessionService;
     private final ApplicationEventPublisher eventPublisher;
+    private final SecurityContextRepository securityContextRepository;
 
     public AuthenticationService(UserRepository userRepository,
                                  LoginAttemptRepository loginAttempts,
@@ -81,7 +84,8 @@ public class AuthenticationService {
                                  RbacQueryPort rbac,
                                  LoginChallengeStore challengeStore,
                                  SessionService sessionService,
-                                 ApplicationEventPublisher eventPublisher) {
+                                 ApplicationEventPublisher eventPublisher,
+                                 SecurityContextRepository securityContextRepository) {
         this.userRepository = userRepository;
         this.loginAttempts = loginAttempts;
         this.passwordEncoder = passwordEncoder;
@@ -93,6 +97,7 @@ public class AuthenticationService {
         this.challengeStore = challengeStore;
         this.sessionService = sessionService;
         this.eventPublisher = eventPublisher;
+        this.securityContextRepository = securityContextRepository;
     }
 
     /**
@@ -107,7 +112,8 @@ public class AuthenticationService {
     }
 
     @Transactional
-    public LoginOutcome login(String rawEmail, String password, HttpServletRequest request) {
+    public LoginOutcome login(String rawEmail, String password,
+                              HttpServletRequest request, HttpServletResponse response) {
         String ip = RequestContext.clientIp(request);
         String ua = RequestContext.userAgent(request);
         String emailNormalized = RequestContext.normalizeEmail(rawEmail);
@@ -158,7 +164,7 @@ public class AuthenticationService {
                     challengeStore.issue(user.getId()));
         }
 
-        establishAuthenticatedSession(user, request, ip, ua, false);
+        establishAuthenticatedSession(user, request, response, ip, ua, false);
         recordAttempt(user.getId(), emailNormalized, ip, ua, "SUCCESS", null, false, false);
         auditService.append(AuditContext.builder()
                 .eventType("AUTH_LOGIN_SUCCESS")
@@ -173,7 +179,8 @@ public class AuthenticationService {
     }
 
     @Transactional
-    public UserEntity completeMfaLogin(String challengeId, boolean mfaOk, HttpServletRequest request) {
+    public UserEntity completeMfaLogin(String challengeId, boolean mfaOk,
+                                       HttpServletRequest request, HttpServletResponse response) {
         UUID userId = challengeStore.consume(challengeId);
         if (userId == null) {
             throw new PortalException.Unauthorized(ErrorCodes.MFA_INVALID, "Invalid or expired MFA challenge");
@@ -194,7 +201,7 @@ public class AuthenticationService {
             throw new PortalException.Unauthorized(ErrorCodes.MFA_INVALID, "Invalid MFA code");
         }
 
-        establishAuthenticatedSession(user, request, ip, ua, true);
+        establishAuthenticatedSession(user, request, response, ip, ua, true);
         recordAttempt(user.getId(), user.getEmailNormalized(), ip, ua, "SUCCESS", null, true, true);
         auditService.append(AuditContext.builder()
                 .eventType("AUTH_MFA_SUCCESS")
@@ -208,10 +215,14 @@ public class AuthenticationService {
         return user;
     }
 
-    public void logout(HttpServletRequest request) {
+    public void logout(HttpServletRequest request, HttpServletResponse response) {
+        SecurityContext empty = SecurityContextHolder.createEmptyContext();
         SecurityContextHolder.clearContext();
-        if (request != null && request.getSession(false) != null) {
-            request.getSession(false).invalidate();
+        if (request != null) {
+            securityContextRepository.saveContext(empty, request, response);
+            if (request.getSession(false) != null) {
+                request.getSession(false).invalidate();
+            }
         }
     }
 
@@ -274,7 +285,9 @@ public class AuthenticationService {
         loginAttempts.save(entity);
     }
 
-    private void establishAuthenticatedSession(UserEntity user, HttpServletRequest request,
+    private void establishAuthenticatedSession(UserEntity user,
+                                               HttpServletRequest request,
+                                               HttpServletResponse response,
                                                String ip, String ua, boolean mfaVerified) {
         EffectiveAuthorities authorities = rbac.loadEffectiveAuthorities(user.getId());
         PortalUserDetails principal = new PortalUserDetails(user,
@@ -301,6 +314,9 @@ public class AuthenticationService {
             } else {
                 newSessionId = request.getSession(true).getId();
             }
+            // Spring Security 6+ does not auto-persist a SecurityContext that was
+            // set outside AuthenticationFilter — save explicitly into the Redis session.
+            securityContextRepository.saveContext(context, request, response);
         }
         if (newSessionId != null && oldSessionId != null && !newSessionId.equals(oldSessionId)) {
             eventPublisher.publishEvent(new SessionFixationProtectionEvent(auth, oldSessionId, newSessionId));
