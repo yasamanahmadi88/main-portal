@@ -216,30 +216,8 @@ print("security headers present on / and /index.html")
 PY
 pass "security headers present on frontend responses"
 
-# Login rate limiting — burst against a dedicated non-existent account.
-# Expect at least one 429 from nginx and/or backend within the burst window.
-RATE_JAR="$(mktemp)"
-saw_429=0
-codes=()
-for i in $(seq 1 30); do
-  body="$(curl -fsS -c "$RATE_JAR" -b "$RATE_JAR" "$BASE_URL/api/v1/auth/csrf" 2>/dev/null || true)"
-  tok="$(python3 -c 'import json,sys; 
-try: print(json.load(sys.stdin)["token"])
-except Exception: print("")' <<<"$body")"
-  code="$(curl -s -o /dev/null -w '%{http_code}' -c "$RATE_JAR" -b "$RATE_JAR" \
-    -X POST "$BASE_URL/api/v1/auth/login" \
-    -H 'Content-Type: application/json' \
-    -H "X-XSRF-TOKEN: ${tok}" \
-    -d '{"username":"rate-limit-probe@portal.local","password":"WrongPassword!12345","rememberDevice":false}')"
-  codes+=("$code")
-  if [[ "$code" == "429" ]]; then
-    saw_429=1
-    break
-  fi
-done
-rm -f "$RATE_JAR"
-echo "rate_limit_codes=${codes[*]}" >>"$EVIDENCE"
-[[ "$saw_429" == "1" ]] && pass "login rate limiting returns HTTP 429 under burst" \
-  || fail "expected HTTP 429 from login rate limit within 30 attempts (got: ${codes[*]})"
+# Rate-limit burst is intentionally NOT run here: the nginx login zone is
+# 10r/m and exhausting it breaks subsequent RBAC/bootstrap login steps.
+# See infrastructure/scripts/rate-limit-verify.sh (run last in CI).
 
 log "=== ALL LIVE API CHECKS PASSED ==="

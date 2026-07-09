@@ -329,6 +329,14 @@ jobs:
           ADMIN_EMAIL="$ADMIN_EMAIL" ADMIN_PASSWORD="$ADMIN_PASSWORD" BASE_URL="$BASE_URL" REPORT_DIR="$REPORT_DIR" \
             ./infrastructure/scripts/live-api-verify.sh | tee -a "$REPORT_DIR/api-verification-post-bootstrap-clear.txt"
 
+      - name: Login rate-limit verification (final)
+        env:
+          BASE_URL: http://localhost:8080
+          REPORT_DIR: ${{ env.REPORT_DIR }}
+        run: |
+          chmod +x infrastructure/scripts/rate-limit-verify.sh
+          ./infrastructure/scripts/rate-limit-verify.sh
+
       - name: Upload live evidence
         if: always()
         uses: actions/upload-artifact@v4
