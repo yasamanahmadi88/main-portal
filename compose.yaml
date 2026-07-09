@@ -238,10 +238,11 @@ services:
       NGINX_ACTUATOR_UPSTREAM: backend:8081
     volumes:
       - frontend-cache:/var/cache/nginx
-      # runtime read-only rootfs; nginx pids live in /run tmpfs
+      # runtime read-only rootfs; nginx pid + client/proxy temp dirs need tmpfs
     tmpfs:
       - /run:size=8m
       - /var/run:size=8m
+      - /tmp:size=64m
     read_only: true
     # Public entrypoint. Front the container with a TLS-terminating proxy or
     # a cloud load balancer in production; the container itself only speaks
