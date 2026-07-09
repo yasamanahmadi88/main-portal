@@ -25,32 +25,8 @@
       type="font/woff2"
       crossorigin
     />
-    <!-- Inline theme bootstrap: avoids flash of unstyled/incorrect theme. -->
-    <script>
-      (function () {
-        try {
-          var stored = localStorage.getItem('portal.theme');
-          var pref = stored ? JSON.parse(stored) : null;
-          var mode = pref && pref.mode ? pref.mode : 'SYSTEM';
-          var isDark =
-            mode === 'DARK' ||
-            (mode === 'SYSTEM' &&
-              window.matchMedia &&
-              window.matchMedia('(prefers-color-scheme: dark)').matches);
-          document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-          var lang = localStorage.getItem('portal.lang');
-          if (lang === 'en-US') {
-            document.documentElement.setAttribute('lang', 'en-US');
-            document.documentElement.setAttribute('dir', 'ltr');
-          } else {
-            document.documentElement.setAttribute('lang', 'fa-IR');
-            document.documentElement.setAttribute('dir', 'rtl');
-          }
-        } catch (_) {
-          document.documentElement.setAttribute('data-theme', 'light');
-        }
-      })();
-    </script>
+    <!-- External bootstrap: CSP script-src is 'self' (no unsafe-inline). -->
+    <script src="theme-bootstrap.js"></script>
   </head>
   <body>
     <app-root>

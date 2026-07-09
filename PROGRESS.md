@@ -23,8 +23,23 @@ Phases 0–15 delivered. Closing remaining live-verification gaps via GitHub Act
 | Backend focused unit tests | PASS (AuthorizationDecision, PasswordHashing, Modulith, AuditHashChain) |
 | Frontend Vitest | PASS (39) |
 
+## SPA boot fix (2026-07-09)
+
+Playwright failed because the Angular SPA never mounted under the Docker nginx CSP:
+
+1. `upgrade-insecure-requests` on HTTP localhost upgraded script fetches to HTTPS → bundles never loaded.
+2. Inline theme bootstrap + Angular critical-CSS `onload=` handlers violated `script-src 'self'`.
+
+Remediation:
+
+- nginx maps `upgrade-insecure-requests` only when `$forwarded_scheme` is `https`
+- theme bootstrap moved to `public/theme-bootstrap.js`
+- production build sets `inlineCritical: false`
+- `spa-boot-verify.sh` + Playwright artifact copy-on-failure added to `fullstack-verify`
+
 ## Known limitations (truthful)
 
 - Live compose / Playwright / ZAP results depend on green `fullstack-verify` runs on GitHub-hosted runners.
-- Some ASVS rows remain PARTIALLY VERIFIED (MFA live enroll, rate-limit burst, Tempo/Loki full stack, production TLS/WAF).
+- Some ASVS rows remain PARTIALLY VERIFIED (MFA live enroll, Tempo/Loki full stack, production TLS/WAF).
 - ZAP baseline is uploaded as an artifact and does not fail the job by default (`fail_action: false`); high findings must still be reviewed.
+- Rate-limit burst is verified by `rate-limit-verify.sh` as the final fullstack step (after other logins).

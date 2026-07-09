@@ -275,6 +275,14 @@ jobs:
           npm ci --no-audit --no-fund
           npx playwright install --with-deps chromium
 
+      - name: SPA boot smoke (pre-Playwright)
+        env:
+          BASE_URL: http://localhost:8080
+          REPORT_DIR: ${{ env.REPORT_DIR }}
+        run: |
+          chmod +x infrastructure/scripts/spa-boot-verify.sh
+          ./infrastructure/scripts/spa-boot-verify.sh
+
       - name: Playwright + Axe live e2e
         working-directory: frontend
         env:
@@ -283,10 +291,13 @@ jobs:
           PORTAL_E2E_ADMIN_PASSWORD: ${{ steps.secrets.outputs.BOOT_PW }}
           PORTAL_E2E_REQUIRE_LIVE: "1"
         run: |
+          set +e
           npx playwright test e2e/live-portal.spec.ts --reporter=list,html
+          status=$?
           mkdir -p ../artifacts/live-evidence/playwright
           cp -r playwright-report ../artifacts/live-evidence/playwright/ 2>/dev/null || true
           cp -r test-results ../artifacts/live-evidence/playwright-results 2>/dev/null || true
+          exit $status
 
       - name: OWASP ZAP baseline
         uses: zaproxy/action-baseline@v0.14.0

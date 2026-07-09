@@ -200,9 +200,15 @@ needed=["content-security-policy","x-content-type-options","referrer-policy"]
 for label, text in (("root", root.lower()), ("index", index.lower())):
     missing=[h for h in needed if h not in text]
     assert not missing, f"{label} missing {missing}\n{text}"
+    # Local/CI stack is HTTP — upgrade-insecure-requests would break SPA boot.
+    assert "upgrade-insecure-requests" not in text, (
+        f"{label} CSP must not include upgrade-insecure-requests on HTTP:\n{text}"
+    )
 print("security headers present on / and /index.html")
+print("CSP omits upgrade-insecure-requests on HTTP (SPA bootable)")
 PY
 pass "security headers present on frontend responses"
+pass "CSP omits upgrade-insecure-requests on HTTP"
 
 # Rate-limit burst is intentionally NOT run here: the nginx login zone is
 # 10r/m and exhausting it breaks subsequent RBAC/bootstrap login steps.

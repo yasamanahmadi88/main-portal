@@ -96,14 +96,25 @@ test.beforeAll(async () => {
 
 test.describe('Live auth UI — language and theme', () => {
   test('Persian is default with RTL on login', async ({ page }) => {
+    const pageErrors: string[] = [];
+    page.on('pageerror', (err) => pageErrors.push(String(err)));
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        pageErrors.push(msg.text());
+      }
+    });
     await page.addInitScript(() => {
       localStorage.removeItem('portal.lang');
       localStorage.removeItem('portal.theme');
     });
-    await page.goto('/auth/login');
+    await page.goto('/auth/login', { waitUntil: 'networkidle' });
     const html = page.locator('html');
     await expect(html).toHaveAttribute('lang', 'fa-IR');
     await expect(html).toHaveAttribute('dir', 'rtl');
+    // Wait for Angular to replace the static loading placeholder.
+    await expect(page.locator('app-root app-language-switcher, [data-testid="language-switcher"]')).toBeVisible({
+      timeout: 30_000
+    });
     await expect(page.locator('[data-testid="language-switcher"]')).toBeVisible({ timeout: 15_000 });
     await expect(page.locator('[data-testid="theme-switcher"]')).toBeVisible({ timeout: 15_000 });
     // Accessible names resolve once i18n bundles load.
@@ -113,6 +124,7 @@ test.describe('Live auth UI — language and theme', () => {
     await expect(
       page.getByRole('button', { name: /change theme|تغییر پوسته|روشن|تیره|سیستم|light|dark|system/i })
     ).toBeVisible({ timeout: 15_000 });
+    expect(pageErrors, `SPA boot errors: ${pageErrors.join('\n')}`).toEqual([]);
   });
 
   test('switches to English LTR without full navigation reload barrier', async ({ page }) => {
