@@ -85,8 +85,8 @@ EXPOSE 8080 8081
 
 # Container HEALTHCHECK uses Boot's Actuator readiness probe.  The management
 # port is separate from the API port so we can safely restrict access to it.
-HEALTHCHECK --interval=15s --timeout=5s --retries=10 --start-period=90s \
+HEALTHCHECK --interval=10s --timeout=5s --retries=18 --start-period=120s \
     CMD wget -qO- --header 'Accept: application/json' \
-        http://127.0.0.1:8081/actuator/health/readiness | grep -q '"status":"UP"' || exit 1
+        http://127.0.0.1:8081/actuator/health | grep -q '"status":"UP"' || exit 1
 
 ENTRYPOINT ["/sbin/tini", "--", "java", "-jar", "/app/app.jar"]

@@ -114,6 +114,8 @@ server:
         secure: false
 
 management:
+  server:
+    port: ${MANAGEMENT_SERVER_PORT:8081}
   endpoints:
     web:
       exposure:
@@ -125,6 +127,11 @@ management:
       show-components: when-authorized
       probes:
         enabled: true
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
     info:
       access: read-only
     prometheus:

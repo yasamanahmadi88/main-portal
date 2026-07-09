@@ -114,8 +114,43 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$REPORT_DIR"
-          docker compose --env-file .env -f compose.yaml up -d
-          for i in $(seq 1 90); do
+          # Stage dependencies first so a backend crash still leaves logs collectible.
+          docker compose --env-file .env -f compose.yaml up -d postgres redis mailpit
+          for i in $(seq 1 40); do
+            docker compose --env-file .env ps --format json > "$REPORT_DIR/ps.json" || true
+            if python3 infrastructure/scripts/wait-compose-services.py "$REPORT_DIR/ps.json" postgres redis mailpit; then
+              break
+            fi
+            echo "waiting for deps ($i)..."
+            sleep 3
+            if [[ $i -eq 40 ]]; then
+              docker compose --env-file .env logs --no-color postgres redis mailpit | tee "$REPORT_DIR/compose-logs.txt" | tail -200
+              exit 1
+            fi
+          done
+
+          docker compose --env-file .env -f compose.yaml up -d --no-deps backend
+          for i in $(seq 1 72); do
+            docker compose --env-file .env ps --format json > "$REPORT_DIR/ps.json" || true
+            if python3 infrastructure/scripts/wait-compose-services.py "$REPORT_DIR/ps.json" backend; then
+              echo "backend healthy"
+              break
+            fi
+            # Fail fast if the JVM process exited
+            if docker compose --env-file .env ps backend | grep -qiE 'Exit|exited'; then
+              docker compose --env-file .env logs --no-color backend | tee "$REPORT_DIR/backend-logs.txt" | tail -400
+              exit 1
+            fi
+            echo "waiting for backend ($i)..."
+            sleep 5
+            if [[ $i -eq 72 ]]; then
+              docker compose --env-file .env logs --no-color backend | tee "$REPORT_DIR/backend-logs.txt" | tail -400
+              exit 1
+            fi
+          done
+
+          docker compose --env-file .env -f compose.yaml up -d --no-deps frontend
+          for i in $(seq 1 60); do
             docker compose --env-file .env ps --format json > "$REPORT_DIR/ps.json" || true
             if python3 infrastructure/scripts/check-compose-health.py "$REPORT_DIR/ps.json"; then
               if curl -fsS http://localhost:8080/healthz >/dev/null 2>&1 \
@@ -124,12 +159,12 @@ jobs:
                 break
               fi
             fi
-            echo "waiting for health ($i)..."
+            echo "waiting for full stack ($i)..."
             docker compose --env-file .env ps
             sleep 5
-            if [[ $i -eq 90 ]]; then
+            if [[ $i -eq 60 ]]; then
               docker compose --env-file .env ps | tee "$REPORT_DIR/compose-ps.txt"
-              docker compose --env-file .env logs --no-color | tee "$REPORT_DIR/compose-logs.txt" | tail -200
+              docker compose --env-file .env logs --no-color | tee "$REPORT_DIR/compose-logs.txt" | tail -300
               exit 1
             fi
           done

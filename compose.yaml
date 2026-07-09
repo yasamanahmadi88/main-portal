@@ -200,11 +200,12 @@ services:
     tmpfs:
       - /run:size=8m
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- --header 'Accept: application/json' http://localhost:8081/actuator/health/readiness | grep -q '\"status\":\"UP\"' || exit 1"]
-      interval: 15s
+      # Prefer liveness during cold start; readiness can lag while Flyway runs.
+      test: ["CMD-SHELL", "wget -qO- --header 'Accept: application/json' http://127.0.0.1:8081/actuator/health | grep -q '\"status\":\"UP\"' || exit 1"]
+      interval: 10s
       timeout: 5s
-      retries: 10
-      start_period: 90s
+      retries: 18
+      start_period: 120s
     security_opt:
       - no-new-privileges:true
     cap_drop:
