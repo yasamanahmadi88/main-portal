@@ -29,6 +29,7 @@ const OPTIONS: readonly ThemeOption[] = [
     <button
       mat-stroked-button
       type="button"
+      data-testid="theme-switcher"
       [matMenuTriggerFor]="menu"
       [matTooltip]="'common.actions.changeTheme' | translate"
       [attr.aria-label]="'common.actions.changeTheme' | translate"

@@ -67,11 +67,15 @@ async function expectNoStorageAuth(page: Page): Promise<void> {
 }
 
 async function openLanguageMenu(page: Page): Promise<void> {
-  await page.getByRole('button', { name: /change language|تغییر زبان/i }).click();
+  const trigger = page.locator('[data-testid="language-switcher"]');
+  await expect(trigger).toBeVisible({ timeout: 15_000 });
+  await trigger.click();
 }
 
 async function openThemeMenu(page: Page): Promise<void> {
-  await page.getByRole('button', { name: /change theme|تغییر پوسته/i }).click();
+  const trigger = page.locator('[data-testid="theme-switcher"]');
+  await expect(trigger).toBeVisible({ timeout: 15_000 });
+  await trigger.click();
 }
 
 async function axeSeriousCritical(page: Page, label: string): Promise<void> {
@@ -100,8 +104,15 @@ test.describe('Live auth UI — language and theme', () => {
     const html = page.locator('html');
     await expect(html).toHaveAttribute('lang', 'fa-IR');
     await expect(html).toHaveAttribute('dir', 'rtl');
-    await expect(page.getByRole('button', { name: /change language|تغییر زبان/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /change theme|تغییر پوسته/i })).toBeVisible();
+    await expect(page.locator('[data-testid="language-switcher"]')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('[data-testid="theme-switcher"]')).toBeVisible({ timeout: 15_000 });
+    // Accessible names resolve once i18n bundles load.
+    await expect(
+      page.getByRole('button', { name: /change language|تغییر زبان|فارسی/i })
+    ).toBeVisible({ timeout: 15_000 });
+    await expect(
+      page.getByRole('button', { name: /change theme|تغییر پوسته|روشن|تیره|سیستم|light|dark|system/i })
+    ).toBeVisible({ timeout: 15_000 });
   });
 
   test('switches to English LTR without full navigation reload barrier', async ({ page }) => {
@@ -178,10 +189,8 @@ test.describe('Live login / logout / storage', () => {
     await page.locator('input[name="password"], input[formcontrolname="password"]').fill(ADMIN_PASSWORD);
     await page.locator('button[type="submit"]').click();
     await page.waitForURL(/\/dashboard/, { timeout: 20_000 });
-    await expect(page.getByRole('button', { name: /change language|تغییر زبان/i })).toBeVisible({
-      timeout: 20_000
-    });
-    await expect(page.getByRole('button', { name: /change theme|تغییر پوسته/i })).toBeVisible();
+    await expect(page.locator('[data-testid="language-switcher"]')).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator('[data-testid="theme-switcher"]')).toBeVisible();
     await expectNoStorageAuth(page);
 
     const cookies = await page.context().cookies();

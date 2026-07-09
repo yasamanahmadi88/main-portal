@@ -18,6 +18,7 @@ import type { Language } from '@shared/models';
       mat-stroked-button
       type="button"
       class="app-language-trigger"
+      data-testid="language-switcher"
       [matMenuTriggerFor]="menu"
       [matTooltip]="'common.actions.changeLanguage' | translate"
       [attr.aria-label]="'common.actions.changeLanguage' | translate"
