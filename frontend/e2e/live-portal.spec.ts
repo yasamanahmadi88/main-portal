@@ -127,7 +127,11 @@ test.describe('Live auth UI — language and theme', () => {
     await expect(
       page.getByRole('button', { name: /change theme|تغییر پوسته|روشن|تیره|سیستم|light|dark|system/i })
     ).toBeVisible({ timeout: 15_000 });
-    expect(pageErrors, `SPA boot errors: ${pageErrors.join('\n')}`).toEqual([]);
+    // Anonymous bootstrap probes GET /api/v1/me; browsers log the expected 401.
+    const unexpected = pageErrors.filter(
+      (e) => !/status of 401|Failed to load resource:.*401/i.test(e)
+    );
+    expect(unexpected, `SPA boot errors: ${unexpected.join('\n')}`).toEqual([]);
   });
 
   test('switches to English LTR without full navigation reload barrier', async ({ page }) => {
