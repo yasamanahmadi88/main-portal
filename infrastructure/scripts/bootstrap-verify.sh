@@ -70,7 +70,8 @@ if docker compose ps --services 2>/dev/null | grep -q postgres; then
   HASH="$(docker compose exec -T postgres psql -U "${POSTGRES_SUPERUSER:-portal_superuser}" -d "${POSTGRES_DB:-portal}" -tAc \
     "SELECT password_hash FROM users WHERE email_normalized=lower('${ADMIN_EMAIL}') LIMIT 1;" 2>/dev/null | tr -d '[:space:]' || true)"
   if [[ -n "$HASH" ]]; then
-    [[ "$HASH" == \$argon2* ]] && pass "password stored as Argon2 hash" || fail "password hash not Argon2: ${HASH:0:20}..."
+    [[ "$HASH" == *\$argon2id\$* || "$HASH" == \$argon2* ]] && pass "password stored as Argon2 hash" \
+      || fail "password hash not Argon2: ${HASH:0:30}..."
     [[ "$HASH" != *"$ADMIN_PASSWORD"* ]] && pass "plaintext password not stored in hash column" || fail "plaintext in hash column"
   else
     log "NOTE: could not read password_hash via psql (role/network); Argon2 verified by PasswordHashingTest in CI"

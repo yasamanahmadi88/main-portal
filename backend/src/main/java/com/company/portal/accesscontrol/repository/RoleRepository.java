@@ -20,4 +20,11 @@ public interface RoleRepository extends JpaRepository<RoleEntity, UUID> {
 
     @Query("SELECT r FROM RoleEntity r ORDER BY r.code ASC")
     List<RoleEntity> findAllOrdered();
+
+    @Query("""
+            SELECT DISTINCT r FROM RoleEntity r
+            LEFT JOIN FETCH r.permissions
+            WHERE r.id IN :ids
+            """)
+    List<RoleEntity> findAllByIdWithPermissions(@Param("ids") Collection<UUID> ids);
 }

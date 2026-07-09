@@ -85,7 +85,10 @@ public class RbacService implements RbacQueryPort {
         List<UUID> roleIds = userRoles.findByUserId(userId).stream()
                 .map(ur -> ur.getId().getRoleId())
                 .toList();
-        return roles.findAllById(roleIds);
+        if (roleIds.isEmpty()) {
+            return List.of();
+        }
+        return roles.findAllByIdWithPermissions(roleIds);
     }
 
     private EffectiveAuthorities compute(UUID userId) {

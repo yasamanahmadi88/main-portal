@@ -149,12 +149,14 @@ public class RoleService {
                 .build());
     }
 
+    @Transactional(readOnly = true)
     public RoleDto toDto(RoleEntity r) {
+        RoleEntity managed = roles.findById(r.getId()).orElse(r);
         return new RoleDto(
-                r.getId(), r.getCode(), r.getName(), r.getDescription(),
-                r.isSystemRole(),
-                r.getPermissions().stream().map(RoleService::toPermissionDto).toList(),
-                r.getCreatedAt(), r.getUpdatedAt());
+                managed.getId(), managed.getCode(), managed.getName(), managed.getDescription(),
+                managed.isSystemRole(),
+                managed.getPermissions().stream().map(RoleService::toPermissionDto).toList(),
+                managed.getCreatedAt(), managed.getUpdatedAt());
     }
 
     public static PermissionDto toPermissionDto(PermissionEntity p) {

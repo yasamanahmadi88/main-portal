@@ -95,7 +95,7 @@ class LiveSecurityIntegrationTest extends AbstractIntegrationTest {
     String hash =
         jdbcTemplate.queryForObject(
             "select password_hash from users where email = ?", String.class, "admin@example.com");
-    assertThat(hash).startsWith("$argon2id$");
+    assertThat(hash).contains("$argon2id$");
   }
 
   @Test

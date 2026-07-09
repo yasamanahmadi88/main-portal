@@ -78,6 +78,9 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         CookieCsrfTokenRepository csrfRepo = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        // Align with Angular HttpClient XSRF defaults and OpenAPI contract.
+        csrfRepo.setHeaderName("X-XSRF-TOKEN");
+        csrfRepo.setCookieName("XSRF-TOKEN");
         boolean secureCookie = properties.getSession().getCookie().isSecure();
         String sameSite = properties.getSession().getCookie().getSameSite().attributeValue();
         csrfRepo.setCookieCustomizer(cookie -> cookie

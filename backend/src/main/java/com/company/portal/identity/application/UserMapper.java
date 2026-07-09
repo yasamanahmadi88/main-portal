@@ -3,7 +3,6 @@ package com.company.portal.identity.application;
 import com.company.portal.accesscontrol.api.EffectiveAuthorities;
 import com.company.portal.accesscontrol.api.RbacQueryPort;
 import com.company.portal.accesscontrol.application.RbacService;
-import com.company.portal.accesscontrol.application.RoleService;
 import com.company.portal.accesscontrol.web.RoleDto;
 import com.company.portal.identity.application.PreferenceService.PreferencesSnapshot;
 import com.company.portal.identity.domain.MfaCredentialEntity;
@@ -24,22 +23,25 @@ import org.springframework.stereotype.Component;
 public class UserMapper {
 
     private final RbacService rbacService;
-    private final RoleService roleService;
     private final PreferenceService preferenceService;
     private final RbacQueryPort rbac;
 
-    public UserMapper(RbacService rbacService, RoleService roleService,
+    public UserMapper(RbacService rbacService,
                       PreferenceService preferenceService, RbacQueryPort rbac) {
         this.rbacService = rbacService;
-        this.roleService = roleService;
         this.preferenceService = preferenceService;
         this.rbac = rbac;
     }
 
     public UserDto toDto(UserEntity user) {
         EffectiveAuthorities auth = rbac.loadEffectiveAuthorities(user.getId());
+        // Role summaries only — permission codes are already aggregated on the user DTO.
+        // Avoid RoleService.toDto here: it touches lazy RoleEntity.permissions outside a session.
         List<RoleDto> roles = rbacService.rolesOf(user.getId()).stream()
-                .map(roleService::toDto).toList();
+                .map(r -> new RoleDto(
+                        r.getId(), r.getCode(), r.getName(), r.getDescription(),
+                        r.isSystemRole(), List.of(), r.getCreatedAt(), r.getUpdatedAt()))
+                .toList();
         PreferencesSnapshot prefs = preferenceService.getPreferences(user.getId());
         return new UserDto(
                 user.getId(),
