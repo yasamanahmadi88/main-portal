@@ -315,15 +315,53 @@ jobs:
           PORTAL_BOOTSTRAP_ADMIN_EMAIL: ci-admin@portal.local
           PORTAL_BOOTSTRAP_ADMIN_PASSWORD: ${{ steps.secrets.outputs.BOOT_PW }}
         run: |
+          set -euo pipefail
+          # RBAC matrix / live tests may have created additional users; bootstrap
+          # must be a no-op whenever ANY users already exist — not only when
+          # the database still has exactly one row.
+          BEFORE=$(docker compose --env-file .env exec -T postgres \
+            psql -U portal_superuser -d portal -tAc "SELECT COUNT(*) FROM users;" | tr -d '[:space:]')
+          SUPER_BEFORE=$(docker compose --env-file .env exec -T postgres \
+            psql -U portal_superuser -d portal -tAc \
+            "SELECT COUNT(*) FROM users u JOIN user_roles ur ON ur.user_id=u.id JOIN roles r ON r.id=ur.role_id WHERE r.code='SUPER_ADMIN';" \
+            | tr -d '[:space:]')
+          echo "user_count_before_restart=$BEFORE super_admin_before=$SUPER_BEFORE" | tee -a "$REPORT_DIR/bootstrap-verify.txt"
+          test -n "$BEFORE" && test "$BEFORE" -ge 1
+
           docker compose --env-file .env restart backend
-          for i in $(seq 1 40); do
+          for i in $(seq 1 60); do
             if curl -fsS http://localhost:8080/api/v1/auth/csrf >/dev/null 2>&1; then break; fi
             sleep 3
+            if [[ $i -eq 60 ]]; then
+              docker compose --env-file .env logs --no-color backend | tee -a "$REPORT_DIR/bootstrap-verify.txt" | tail -100
+              exit 1
+            fi
           done
-          COUNT=$(docker compose --env-file .env exec -T postgres \
+
+          AFTER=$(docker compose --env-file .env exec -T postgres \
             psql -U portal_superuser -d portal -tAc "SELECT COUNT(*) FROM users;" | tr -d '[:space:]')
-          echo "user_count_after_restart=$COUNT" | tee -a "$REPORT_DIR/bootstrap-verify.txt"
-          test "$COUNT" = "1"
+          SUPER_AFTER=$(docker compose --env-file .env exec -T postgres \
+            psql -U portal_superuser -d portal -tAc \
+            "SELECT COUNT(*) FROM users u JOIN user_roles ur ON ur.user_id=u.id JOIN roles r ON r.id=ur.role_id WHERE r.code='SUPER_ADMIN';" \
+            | tr -d '[:space:]')
+          {
+            echo "user_count_after_restart=$AFTER"
+            echo "super_admin_after=$SUPER_AFTER"
+          } | tee -a "$REPORT_DIR/bootstrap-verify.txt"
+          test "$AFTER" = "$BEFORE"
+          test "$SUPER_AFTER" = "$SUPER_BEFORE"
+
+          # Runner must log the skip path (users already present), not create another admin.
+          docker compose --env-file .env logs --no-color backend --since 5m \
+            | tee "$REPORT_DIR/bootstrap-restart-logs.txt" \
+            | grep -qiE 'Bootstrap admin skipped: .* user\(s\) already present' \
+            || { echo "FAIL: expected bootstrap skip log after restart" >&2; exit 1; }
+          if docker compose --env-file .env logs --no-color backend --since 5m \
+               | grep -qiE 'Bootstrap admin created'; then
+            echo "FAIL: bootstrap created a user on second start" >&2
+            exit 1
+          fi
+          echo "PASS: second bootstrap is a no-op (user count unchanged)" | tee -a "$REPORT_DIR/bootstrap-verify.txt"
 
       - name: Auth still works after clearing bootstrap env (runtime)
         env:
