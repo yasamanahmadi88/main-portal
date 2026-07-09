@@ -10,6 +10,11 @@ spring:
     open-in-view: false
   session:
     store-type: redis
+    data:
+      redis:
+        repository-type: indexed
+        namespace: portal:session
+        flush-mode: on_save
 
 server:
   servlet:

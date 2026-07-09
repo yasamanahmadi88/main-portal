@@ -72,10 +72,12 @@ spring:
   session:
     store-type: redis
     timeout: 30m
-    redis:
-      namespace: portal:session
-      flush-mode: on_save
-      repository-type: indexed
+    data:
+      redis:
+        namespace: portal:session
+        flush-mode: on_save
+        # indexed repository exposes FindByIndexNameSessionRepository (required by SessionService)
+        repository-type: indexed
   mail:
     host: ${MAIL_HOST:localhost}
     port: ${MAIL_PORT:1025}
