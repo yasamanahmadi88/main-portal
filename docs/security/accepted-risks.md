@@ -1,6 +1,6 @@
 # Accepted Risks
 
-Accepted risks require explicit ownership, expiry, compensating controls, and review. This file starts empty because no security risk has been formally accepted for production.
+Accepted risks require explicit ownership, expiry, compensating controls, and review. No production security risk has been formally accepted yet.
 
 ## Current accepted risks
 
@@ -12,10 +12,11 @@ Accepted risks require explicit ownership, expiry, compensating controls, and re
 
 | Source | Risk | Current handling |
 |--------|------|------------------|
-| `docs/risk-register.md` R1 | Docker verification may be blocked in some environments | Keep quality gate NOT VERIFIED until CI or local evidence exists. |
-| `docs/risk-register.md` R5 | MFA encryption key mismanagement | Mitigate by external key management and key IDs; not accepted as residual production risk. |
-| `docs/risk-register.md` R7 | Redis session and CSRF cookie naming across environments | Requires environment-specific tests before production. |
-| `docs/risk-register.md` R8 | Final `SUPER_ADMIN` edge cases | Requires explicit authorization tests before production. |
+| Cloud Agent / local Docker | Overlay mount prevents container execution in Cursor Cloud | Live verification runs in GitHub Actions `fullstack-verify`; quality gates stay truthful until that job is green. |
+| ZAP baseline | Baseline scanner may report informational/low noise on login pages | Artifact retained; `fail_action: false` until triage policy is defined; critical/high must be fixed or justified. |
+| ASVS V8.5 / TLS / WAF | Production TLS termination, WAF, and backup immutability are environment controls | Documented in pen-test plan; not claimed VERIFIED from application CI alone. |
+| MFA live e2e | Full TOTP enroll/challenge/recovery Playwright path still expanding | Unit + encryption key wiring verified; live MFA scenarios tracked in NEXT-STEPS. |
+| Rate-limit burst | Redis rate limiter implemented; automated burst assertion pending | Code path present; add shell burst test before production. |
 
 ## Acceptance template
 

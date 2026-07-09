@@ -7,10 +7,11 @@ Validate the portal's authentication, authorization, audit, logging, and deploym
 ## Preconditions
 
 - Test environment mirrors production security configuration.
-- Seeded users exist for all baseline roles.
+- Seeded users exist for all baseline roles (`SUPER_ADMIN`, `ADMIN`, `SECURITY_ADMIN`, `USER_MANAGER`, `ROLE_MANAGER`, `AUDITOR`, `SUPPORT`, `USER` via Flyway V2+V8).
 - Test data is synthetic.
 - Logging and audit are enabled.
 - Rate-limit thresholds are documented for testers.
+- CI `fullstack-verify` has produced a recent green (or reviewed) live-stack evidence pack.
 
 ## Test accounts
 

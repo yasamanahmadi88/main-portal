@@ -2,28 +2,29 @@
 
 ## Current phase
 
-Phases 0–15 delivered. Mandatory CI workflows are green on PR #2.
+Phases 0–15 delivered. Closing remaining live-verification gaps via GitHub Actions `fullstack-verify` (compose stack, bootstrap, API security, RBAC matrix, audit DB, Playwright+Axe, ZAP, observability).
 
-## Final commit
+## Branch / PR
 
-`c5474e3b6969c36e07f47bc49a4c884e8f699de0` on `cursor/complete-enterprise-portal`
+- Branch: `cursor/complete-enterprise-portal`
+- PR: https://github.com/yasamanahmadi88/main-portal/pull/2
 
-## Verified evidence
+## Recent verification work
 
-| Check | Result |
-|-------|--------|
-| Backend `./mvnw test` (local unit/arch) | PASS (36/0/1 historically; CI contextLoads PASS with Docker) |
+| Item | Result |
+|------|--------|
+| Final SUPER_ADMIN demotion/disable protection | Implemented + unit tested |
+| Flyway V7 append-only audit grants | Present |
+| Flyway V8 USER_MANAGER / ROLE_MANAGER / SUPPORT | Present |
+| Live verification scripts | `bootstrap-verify`, `live-api-verify`, `rbac-matrix-verify`, `audit-db-verify`, `observability-verify` |
+| Playwright + Axe live suite | `frontend/e2e/live-portal.spec.ts` (hard-fail when `PORTAL_E2E_REQUIRE_LIVE=1`) |
+| Fullstack CI workflow | `.github/workflows/fullstack-verify.yml` |
+| Local Docker in Cloud Agent | NOT AVAILABLE (overlay mount failure) — do not mark live e2e PASS from this host |
+| Backend focused unit tests | PASS (AuthorizationDecision, PasswordHashing, Modulith, AuditHashChain) |
 | Frontend Vitest | PASS (39) |
-| Frontend production build | PASS |
-| Compose config | PASS |
-| Spectral OpenAPI | PASS (0 errors) |
-| CI workflow (PR) | PASS — backend, frontend, openapi, security |
-| SBOM workflow | PASS — backend + frontend CycloneDX |
-| Container build + Trivy CRITICAL | PASS — backend + frontend images |
-| Gitleaks | PASS |
 
-## Known limitations
+## Known limitations (truthful)
 
-- Local Cloud Agent cannot run Testcontainers/BuildKit (overlay/buildx); CI runners verify those paths.
-- Playwright e2e skips without a live stack; axe smoke is configured.
-- Some ASVS checklist rows remain evidence-linked as PARTIAL/NOT VERIFIED pending production penetration testing.
+- Live compose / Playwright / ZAP results depend on green `fullstack-verify` runs on GitHub-hosted runners.
+- Some ASVS rows remain PARTIALLY VERIFIED (MFA live enroll, rate-limit burst, Tempo/Loki full stack, production TLS/WAF).
+- ZAP baseline is uploaded as an artifact and does not fail the job by default (`fail_action: false`); high findings must still be reviewed.

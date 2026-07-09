@@ -77,6 +77,20 @@ Audit metadata must not include:
 - Recovery codes.
 - Full raw request/response bodies.
 
+## Runtime privilege enforcement
+
+Flyway `V7__audit_append_only_grants.sql` revokes `UPDATE` / `DELETE` / `TRUNCATE` on `audit_events` and `audit_event_chain` from the runtime role (`portal_app`) after V5's broad DML grants, leaving `SELECT` + `INSERT` only.
+
+## Verification evidence
+
+| Check | Command / artifact |
+|-------|--------------------|
+| Runtime role lacks UPDATE/DELETE | `infrastructure/scripts/audit-db-verify.sh` (`has_table_privilege`) |
+| Hash fields populated | `audit-db-verify.sh` + `LiveSecurityIntegrationTest` |
+| API integrity verify | `POST /api/v1/audit-events/verify-integrity` in `live-api-verify.sh` |
+| Unit hash-chain math | `AuditHashChainTest` |
+| CI live evidence | `fullstack-verify` artifact `live-stack-evidence/audit-integrity.txt` |
+
 ## Limitations
 
 The hash chain detects tampering but does not itself prevent privileged database administrators from modifying both data and hashes. Production assurance also requires restricted database administration, immutable backups, monitoring, and separation of duties.
