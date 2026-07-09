@@ -103,10 +103,13 @@ public class AuthController {
 
     @GetMapping("/csrf")
     public CsrfTokenResponse csrf(@RequestAttribute(name = "_csrf", required = false) CsrfToken token) {
+        // Always advertise the Angular/OpenAPI header name. Spring Security 7's
+        // CookieCsrfTokenRepository defaults to X-XSRF-TOKEN; keep the response
+        // contract stable even if a deferred token reports a different name.
         if (token == null) {
             return new CsrfTokenResponse("X-XSRF-TOKEN", "");
         }
-        return new CsrfTokenResponse(token.getHeaderName(), token.getToken());
+        return new CsrfTokenResponse("X-XSRF-TOKEN", token.getToken());
     }
 
     public record LoginRequest(@NotBlank @Email String username,

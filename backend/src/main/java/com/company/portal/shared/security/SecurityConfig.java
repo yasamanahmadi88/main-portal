@@ -76,7 +76,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public CookieCsrfTokenRepository cookieCsrfTokenRepository() {
         CookieCsrfTokenRepository csrfRepo = CookieCsrfTokenRepository.withHttpOnlyFalse();
         // Align with Angular HttpClient XSRF defaults and OpenAPI contract.
         csrfRepo.setHeaderName("X-XSRF-TOKEN");
@@ -88,7 +88,12 @@ public class SecurityConfig {
                 .httpOnly(false)
                 .secure(secureCookie)
                 .sameSite(sameSite));
+        return csrfRepo;
+    }
 
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                                   CookieCsrfTokenRepository csrfRepo) throws Exception {
         http
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf
@@ -163,7 +168,7 @@ public class SecurityConfig {
         }
         cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         cfg.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Correlation-ID",
-                "X-Request-ID", "X-XSRF-TOKEN"));
+                "X-Request-ID", "X-XSRF-TOKEN", "X-CSRF-TOKEN"));
         cfg.setExposedHeaders(List.of("X-Correlation-ID", "X-Request-ID"));
         cfg.setAllowCredentials(true);
         cfg.setMaxAge(Duration.ofMinutes(30));
