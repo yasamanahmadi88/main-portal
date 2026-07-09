@@ -15,14 +15,9 @@ spring:
   mvc:
     problemdetails:
       enabled: true
+  # Jackson 3 (Boot 4) SerializationFeature keys differ from Jackson 2 kebab-case.
+  # Date/duration timestamp and inclusion settings are applied in JacksonConfig.
   jackson:
-    default-property-inclusion: non_null
-    serialization:
-      write-dates-as-timestamps: false
-      write-durations-as-timestamps: false
-      indent-output: false
-    deserialization:
-      fail-on-unknown-properties: false
     time-zone: UTC
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/portal}

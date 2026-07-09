@@ -11,7 +11,7 @@
 #                     read-only apart from the tmpfs-backed cache dirs.
 
 ARG NODE_IMAGE=node:24.15.0-alpine
-ARG NGINX_IMAGE=nginxinc/nginx-unprivileged:1.27.3-alpine
+ARG NGINX_IMAGE=nginxinc/nginx-unprivileged:1.30.3-alpine
 
 # -----------------------------------------------------------------------------
 # Stage 1 — install dependencies
@@ -52,7 +52,10 @@ LABEL org.opencontainers.image.title="portal-frontend" \
 
 USER root
 
-RUN apk add --no-cache wget && \
+# Refresh Alpine packages so CRITICAL openssl/libxml2 fixes from the base
+# image channel are applied even if the tag lags slightly.
+RUN apk upgrade --no-cache && \
+    apk add --no-cache wget && \
     rm -f /etc/nginx/conf.d/default.conf
 
 # Static assets: everything under public/browser is what nginx will serve.

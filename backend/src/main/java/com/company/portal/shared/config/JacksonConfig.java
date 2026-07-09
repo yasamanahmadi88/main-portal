@@ -6,11 +6,12 @@ import org.springframework.boot.jackson.autoconfigure.JsonMapperBuilderCustomize
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.SerializationFeature;
+import tools.jackson.databind.cfg.DateTimeFeature;
 
 /**
- * Portal-wide JSON conventions layered on top of Spring Boot's Jackson 3 auto-
- * configuration. Complements the {@code spring.jackson.*} keys in
- * {@code application.yml}; anything that cannot be expressed there lives here.
+ * Portal-wide JSON conventions for Spring Boot 4 / Jackson 3.
+ * Date/time timestamp behaviour moved to {@link DateTimeFeature} in Jackson 3.
  */
 @Configuration(proxyBeanMethods = false)
 public class JacksonConfig {
@@ -19,6 +20,9 @@ public class JacksonConfig {
     public JsonMapperBuilderCustomizer portalJsonMapperBuilderCustomizer() {
         return builder -> builder
                 .changeDefaultPropertyInclusion(inc -> inc.withValueInclusion(JsonInclude.Include.NON_NULL))
+                .disable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS)
+                .disable(DateTimeFeature.WRITE_DURATIONS_AS_TIMESTAMPS)
+                .disable(SerializationFeature.INDENT_OUTPUT)
                 .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
                 .defaultTimeZone(TimeZone.getTimeZone("UTC"));
     }
