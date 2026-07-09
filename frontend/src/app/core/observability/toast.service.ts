@@ -32,7 +32,6 @@ export class ToastService {
     duration: number
   ): void {
     const label = this.translate.instant(key, params) || key;
-    const dismiss = this.translate.instant('common.actions.dismiss');
     const config: MatSnackBarConfig = {
       duration,
       politeness: tone === 'error' ? 'assertive' : 'polite',
@@ -40,6 +39,8 @@ export class ToastService {
       horizontalPosition: 'center',
       verticalPosition: 'top'
     };
-    this.snackBar.open(label, dismiss || 'OK', config);
+    // No action button: Material marks the container aria-hidden while the
+    // dismiss control remains focusable (axe aria-hidden-focus / WCAG 4.1.2).
+    this.snackBar.open(label, undefined, config);
   }
 }

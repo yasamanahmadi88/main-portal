@@ -275,6 +275,12 @@ jobs:
           npm ci --no-audit --no-fund
           npx playwright install --with-deps chromium
 
+      - name: Cool down login rate-limit window
+        run: |
+          # Prior API/RBAC scripts hit /auth/login; give Redis/nginx windows time to refill
+          # before Playwright exercises UI + API logins.
+          sleep 35
+
       - name: SPA boot smoke (pre-Playwright)
         env:
           BASE_URL: http://localhost:8080

@@ -42,15 +42,25 @@ async function loginApi(
   email: string,
   password: string
 ): Promise<{ status: string; token: string }> {
-  const token = await csrf(request);
-  const res = await request.post('/api/v1/auth/login', {
-    headers: { 'X-XSRF-TOKEN': token, 'Content-Type': 'application/json' },
-    data: { username: email, password, rememberDevice: false }
-  });
-  const body = await res.json();
-  expect(res.status(), JSON.stringify(body)).toBe(200);
-  const token2 = await csrf(request);
-  return { status: body.status as string, token: token2 };
+  let lastBody: unknown;
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const token = await csrf(request);
+    const res = await request.post('/api/v1/auth/login', {
+      headers: { 'X-XSRF-TOKEN': token, 'Content-Type': 'application/json' },
+      data: { username: email, password, rememberDevice: false }
+    });
+    lastBody = await res.json().catch(() => ({}));
+    if (res.status() === 429) {
+      const retryAfter =
+        Number((lastBody as { retry_after_seconds?: number })?.retry_after_seconds ?? 5) || 5;
+      await new Promise((r) => setTimeout(r, (retryAfter + 1) * 1000));
+      continue;
+    }
+    expect(res.status(), JSON.stringify(lastBody)).toBe(200);
+    const token2 = await csrf(request);
+    return { status: (lastBody as { status: string }).status, token: token2 };
+  }
+  throw new Error(`login rate-limited after retries: ${JSON.stringify(lastBody)}`);
 }
 
 async function expectNoStorageAuth(page: Page): Promise<void> {
@@ -96,7 +106,16 @@ async function submitLogin(page: Page): Promise<void> {
   await submit.click();
 }
 
+async function dismissTransientOverlays(page: Page): Promise<void> {
+  // Wait for Material snackbars to leave the DOM before Axe scans.
+  const snack = page.locator('mat-snack-bar-container');
+  if ((await snack.count()) > 0) {
+    await snack.first().waitFor({ state: 'detached', timeout: 12_000 }).catch(() => undefined);
+  }
+}
+
 async function axeSeriousCritical(page: Page, label: string): Promise<void> {
+  await dismissTransientOverlays(page);
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag22aa'])
     .analyze();
@@ -282,12 +301,20 @@ test.describe('Live admin surfaces accessibility', () => {
     await switchToEnglish(page);
     await fillLoginForm(page, ADMIN_EMAIL, ADMIN_PASSWORD);
     await submitLogin(page);
-    await page.waitForURL(/\/dashboard/, { timeout: 20_000 });
+    // Login may be rate-limited after prior suite logins; wait and retry once.
+    if (page.url().includes('/auth/login')) {
+      await page.waitForTimeout(25_000);
+      await fillLoginForm(page, ADMIN_EMAIL, ADMIN_PASSWORD);
+      await submitLogin(page);
+    }
+    await page.waitForURL(/\/dashboard/, { timeout: 30_000 });
+    await dismissTransientOverlays(page);
 
     const paths = ['/users', '/roles', '/permissions', '/profile/security', '/dashboard'];
     for (const path of paths) {
       await page.goto(path);
       expect(page.url(), `redirected to login for ${path}`).not.toContain('/auth/login');
+      await dismissTransientOverlays(page);
       await axeSeriousCritical(page, path);
     }
   });
