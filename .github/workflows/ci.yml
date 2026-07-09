@@ -194,11 +194,8 @@ jobs:
           spectral lint \
             --fail-severity=error \
             --format=stylish \
-            --ruleset "https://raw.githubusercontent.com/stoplightio/spectral/v6.14.2/packages/rulesets/src/oas/index.ts" \
-            contracts/openapi/portal-v1.yaml || {
-              echo "::warning::Spectral remote ruleset unreachable, falling back to bundled rules"
-              spectral lint --fail-severity=error --format=stylish --ruleset spectral:oas contracts/openapi/portal-v1.yaml
-            }
+            --ruleset contracts/openapi/.spectral.yaml \
+            contracts/openapi/portal-v1.yaml
 
       - name: OpenAPI structure sanity check
         run: |
@@ -258,8 +255,8 @@ jobs:
         continue-on-error: true
 
       - name: Upload OSV SARIF
-        if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        if: always() && hashFiles('osv.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: osv.sarif
           category: osv-scanner

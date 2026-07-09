@@ -56,9 +56,10 @@ jobs:
         run: |
           chmod +x mvnw
           ./mvnw -B -ntp -DskipTests \
-                 org.cyclonedx:cyclonedx-maven-plugin:makeAggregateBom \
-                 -Dcyclonedx.outputFormat=all \
-                 -Dcyclonedx.outputName=portal-backend-sbom
+                 org.cyclonedx:cyclonedx-maven-plugin:makeAggregateBom
+          ls -la target/bom.json target/bom.xml
+          cp target/bom.json target/portal-backend-sbom.json
+          cp target/bom.xml target/portal-backend-sbom.xml
 
       - name: Upload SBOM artifacts
         uses: actions/upload-artifact@v4
@@ -68,6 +69,8 @@ jobs:
           path: |
             backend/target/portal-backend-sbom.json
             backend/target/portal-backend-sbom.xml
+            backend/target/bom.json
+            backend/target/bom.xml
 
   # ------------------------------------------------------------------
   #  Frontend SBOM — CycloneDX Node JS reads package-lock.json and
@@ -101,14 +104,17 @@ jobs:
 
       - name: Generate SBOM
         run: |
-          npx cyclonedx-npm --output-format JSON \
-                            --output-file ../portal-frontend-sbom.json \
-                            --package-lock-only \
-                            --ignore-npm-errors
+          npx --yes @cyclonedx/cyclonedx-npm@2.1.0 \
+            --output-format JSON \
+            --output-file portal-frontend-sbom.json \
+            --package-lock-only \
+            --ignore-npm-errors
+          test -f portal-frontend-sbom.json
+          ls -la portal-frontend-sbom.json
 
       - name: Upload SBOM artifact
         uses: actions/upload-artifact@v4
         with:
           name: frontend-sbom
           if-no-files-found: error
-          path: portal-frontend-sbom.json
+          path: frontend/portal-frontend-sbom.json
