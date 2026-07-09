@@ -45,6 +45,7 @@ public class SecurityEventEntity {
     private String sessionId;
 
     @Column(name = "payload_json", nullable = false, columnDefinition = "jsonb")
+    @org.hibernate.annotations.ColumnTransformer(write = "?::jsonb")
     private String payloadJson;
 
     @Column(name = "acknowledged_at")

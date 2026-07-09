@@ -26,9 +26,11 @@ public class OutboxEventEntity {
     private String eventType;
 
     @Column(name = "payload_json", nullable = false, columnDefinition = "jsonb")
+    @org.hibernate.annotations.ColumnTransformer(write = "?::jsonb")
     private String payloadJson;
 
     @Column(name = "headers_json", nullable = false, columnDefinition = "jsonb")
+    @org.hibernate.annotations.ColumnTransformer(write = "?::jsonb")
     private String headersJson = "{}";
 
     @Column(name = "status", nullable = false, length = 24)

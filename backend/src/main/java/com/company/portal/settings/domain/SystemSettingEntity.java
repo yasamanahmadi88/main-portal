@@ -20,6 +20,7 @@ public class SystemSettingEntity {
     private String settingKey;
 
     @Column(name = "setting_value", nullable = false, columnDefinition = "jsonb")
+    @org.hibernate.annotations.ColumnTransformer(write = "?::jsonb")
     private String settingValue = "{}";
 
     @Column(name = "setting_type", nullable = false, length = 32)

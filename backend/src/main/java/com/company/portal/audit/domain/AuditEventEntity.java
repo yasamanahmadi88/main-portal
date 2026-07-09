@@ -83,6 +83,7 @@ public class AuditEventEntity {
     private String sessionId;
 
     @Column(name = "payload_json", nullable = false, updatable = false, columnDefinition = "jsonb")
+    @org.hibernate.annotations.ColumnTransformer(write = "?::jsonb")
     private String payloadJson;
 
     @Column(name = "previous_hash", updatable = false, length = 128)

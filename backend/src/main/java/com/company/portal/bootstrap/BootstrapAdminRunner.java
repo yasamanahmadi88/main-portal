@@ -103,18 +103,25 @@ public class BootstrapAdminRunner implements ApplicationRunner {
                     Bootstrap admin created: id={}, email={}, role={}. \
                     ROTATE THIS PASSWORD IMMEDIATELY AND DISABLE portal.bootstrap.enabled.""",
                     adminId, LogSanitizer.maskEmail(cfg.getAdminEmail()), PortalRoles.SUPER_ADMIN);
-            auditService.append(AuditContext.builder()
-                    .eventType("BOOTSTRAP_ADMIN_CREATED")
-                    .category("BOOTSTRAP")
-                    .severity(AuditSeverityLevel.CRITICAL)
-                    .outcome(AuditOutcome.SUCCESS)
-                    .actorType("SYSTEM")
-                    .targetType("USER")
-                    .targetId(adminId.toString())
-                    .targetDisplay(LogSanitizer.maskEmail(cfg.getAdminEmail()))
-                    .action("BOOTSTRAP_ADMIN_CREATED")
-                    .addPayload("role", PortalRoles.SUPER_ADMIN)
-                    .build());
+            try {
+                auditService.append(AuditContext.builder()
+                        .eventType("BOOTSTRAP_ADMIN_CREATED")
+                        .category("BOOTSTRAP")
+                        .severity(AuditSeverityLevel.CRITICAL)
+                        .outcome(AuditOutcome.SUCCESS)
+                        .actorType("SYSTEM")
+                        .targetType("USER")
+                        .targetId(adminId.toString())
+                        .targetDisplay(LogSanitizer.maskEmail(cfg.getAdminEmail()))
+                        .action("BOOTSTRAP_ADMIN_CREATED")
+                        .addPayload("role", PortalRoles.SUPER_ADMIN)
+                        .build());
+            } catch (RuntimeException auditFailure) {
+                // Admin row is already committed; do not fail process startup if audit
+                // persistence has a transient mapping/DB issue. Operators still see the WARN.
+                log.error("Bootstrap admin created but audit append failed: {}",
+                        auditFailure.toString());
+            }
         }
     }
 }

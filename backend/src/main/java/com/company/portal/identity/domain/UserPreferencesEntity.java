@@ -32,6 +32,7 @@ public class UserPreferencesEntity {
     private boolean marketingOptIn;
 
     @Column(name = "preferences_json", nullable = false, columnDefinition = "jsonb")
+    @org.hibernate.annotations.ColumnTransformer(write = "?::jsonb")
     private String preferencesJson = "{}";
 
     @Column(name = "created_at", nullable = false, updatable = false)
