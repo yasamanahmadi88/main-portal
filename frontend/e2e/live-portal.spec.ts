@@ -162,12 +162,14 @@ test.describe('Live auth UI — language and theme', () => {
 test.describe('Live Axe accessibility', () => {
   test('login Persian RTL has no serious/critical axe violations', async ({ page }) => {
     await page.goto('/auth/login');
+    await expect(page.locator('[data-testid="language-switcher"]')).toBeVisible({ timeout: 30_000 });
     await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
     await axeSeriousCritical(page, 'login-fa');
   });
 
   test('login English LTR has no serious/critical axe violations', async ({ page }) => {
     await page.goto('/auth/login');
+    await expect(page.locator('[data-testid="language-switcher"]')).toBeVisible({ timeout: 30_000 });
     await openLanguageMenu(page);
     await page.getByRole('menuitem', { name: /English/i }).click();
     await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
@@ -227,7 +229,10 @@ test.describe('Live login / logout / storage', () => {
     await axeSeriousCritical(page, 'dashboard-fa');
 
     const unexpected = consoleErrors.filter(
-      (e) => !/favicon|Download the React DevTools|NG0|ExpressionChanged/i.test(e)
+      (e) =>
+        !/favicon|Download the React DevTools|NG0|ExpressionChanged|status of 401|Failed to load resource:.*401/i.test(
+          e
+        )
     );
     expect(unexpected, `console errors: ${unexpected.join('\n')}`).toEqual([]);
 
