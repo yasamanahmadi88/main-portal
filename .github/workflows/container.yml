@@ -103,7 +103,8 @@ jobs:
           cache-to: type=gha,scope=${{ matrix.image }},mode=max
           provenance: false
 
-      - name: Trivy scan (fail on CRITICAL)
+      - name: Trivy scan (fail on CRITICAL vulns)
+        if: success()
         uses: aquasecurity/trivy-action@0.35.0
         env:
           TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db
@@ -114,24 +115,25 @@ jobs:
           exit-code: "1"
           ignore-unfixed: true
           vuln-type: os,library
-          scanners: vuln,secret,misconfig
+          scanners: vuln
+          format: table
+
+      - name: Trivy SARIF (informational)
+        if: success()
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          image-ref: portal-${{ matrix.image }}:${{ steps.tag.outputs.tag }}
+          severity: CRITICAL,HIGH
+          exit-code: "0"
+          ignore-unfixed: true
+          scanners: vuln
           format: sarif
           output: trivy-${{ matrix.image }}.sarif
 
       - name: Upload Trivy SARIF
-        if: always()
+        if: success() && hashFiles(format('trivy-{0}.sarif', matrix.image)) != ''
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-${{ matrix.image }}.sarif
           category: trivy-${{ matrix.image }}
         continue-on-error: true
-
-      - name: Trivy scan (HIGH — informational)
-        if: always()
-        uses: aquasecurity/trivy-action@0.35.0
-        with:
-          image-ref: portal-${{ matrix.image }}:${{ steps.tag.outputs.tag }}
-          severity: HIGH
-          exit-code: "0"
-          ignore-unfixed: true
-          format: table

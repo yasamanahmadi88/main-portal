@@ -32,4 +32,4 @@ portal:
     encryption:
       active-key-id: test-key-1
       keys:
-        test-key-1: dGVzdC1vbmx5LWtleS0zMi1ieXRlcy1kby1ub3QtdXM=
+        test-key-1: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=

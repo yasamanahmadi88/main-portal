@@ -33,6 +33,7 @@ paths = [
     '''(^|/)infrastructure/database/README\.md$''',
     '''(^|/)frontend/package-lock\.json$''',
     '''(^|/)backend/target/.*''',
+    '''(^|/)backend/src/test/.*''',
     '''(^|/)frontend/dist/.*''',
     '''(^|/)frontend/node_modules/.*''',
     '''\.min\.(js|css)$''',

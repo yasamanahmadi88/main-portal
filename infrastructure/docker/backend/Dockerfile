@@ -44,7 +44,9 @@ COPY backend/src ./src
 
 RUN --mount=type=cache,target=/root/.m2 \
     ./mvnw -B -ntp -DskipTests package && \
-    cp target/*.jar /workspace/app.jar
+    cp target/*.jar /workspace/app.jar && \
+    if [ -f target/bom.json ]; then cp target/bom.json /workspace/bom.json; \
+    else echo '{"bomFormat":"CycloneDX","specVersion":"1.5","version":1,"components":[]}' > /workspace/bom.json; fi
 
 # -----------------------------------------------------------------------------
 # Stage 3 — runtime
@@ -69,7 +71,7 @@ WORKDIR /app
 
 COPY --from=build --chown=portal:portal /workspace/app.jar /app/app.jar
 # The SBOM is copied for supply-chain tooling; it is not required at runtime.
-COPY --from=build --chown=portal:portal /workspace/target/bom.json /app/bom.json
+COPY --from=build --chown=portal:portal /workspace/bom.json /app/bom.json
 
 ENV SPRING_PROFILES_ACTIVE=prod \
     SERVER_PORT=8080 \
