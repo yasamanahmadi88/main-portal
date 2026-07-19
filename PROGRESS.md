@@ -25,15 +25,15 @@ Enterprise final upgrade on branch **`cursor/enterprise-final-upgrade-4bed`** (f
 | Grafana Prometheus/Loki datasource UIDs | Done |
 | Verify scripts + fullstack CI CAPTCHA_REVEAL_ANSWER | Done |
 
-## Local verification (this agent)
+## Verification (this upgrade)
 
 | Item | Result |
 |------|--------|
-| Frontend Vitest | **43 passed** |
-| Frontend lint | 0 errors |
-| Frontend build | OK (monitoring + login chunks) |
-| Backend unit (CaptchaService, Modulith, ArchUnit, crypto, password, auth errors) | PASS (JDK 25) |
-| Docker compose live stack | NOT RUN HERE (no Docker daemon in this environment) — relies on GitHub Actions `fullstack-verify` |
+| Frontend Vitest / lint / build | PASS (43 tests; CI green) |
+| Backend unit + LiveSecurity IT | PASS (CI Java 25) |
+| Docker compose live stack | PASS — `fullstack-verify` https://github.com/yasamanahmadi88/main-portal/actions/runs/29684574811 |
+| Container build / Trivy / SBOM / Gitleaks | PASS |
+| PR | https://github.com/yasamanahmadi88/main-portal/pull/3 |
 
 ## Prior live verification (on `main` tip before upgrade)
 
