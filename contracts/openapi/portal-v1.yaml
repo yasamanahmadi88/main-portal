@@ -36,6 +36,8 @@ tags:
     description: Tenant and system settings.
   - name: Dashboard
     description: Portal dashboard summaries.
+  - name: Monitoring
+    description: Permission-gated application monitoring summaries (no secrets).
 x-standard-error-responses:
   "400": "#/components/responses/BadRequest"
   "401": "#/components/responses/Unauthorized"
@@ -46,13 +48,35 @@ x-standard-error-responses:
   "429": "#/components/responses/TooManyRequests"
   "500": "#/components/responses/InternalServerError"
 paths:
+  /api/v1/auth/captcha:
+    get:
+      tags:
+        - Auth
+      operationId: issueCaptcha
+      summary: Issue a login CAPTCHA challenge.
+      description: |
+        Returns a self-hosted SVG CAPTCHA bound to a one-time Redis challenge.
+        Challenges expire according to `CAPTCHA_TTL` and are consumed on login.
+      responses:
+        "200":
+          description: CAPTCHA challenge issued.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaptchaChallenge"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /api/v1/auth/login:
     post:
       tags:
         - Auth
       operationId: login
-      summary: Authenticate with username and password.
-      description: Creates a server-side session or returns an MFA challenge when additional verification is required.
+      summary: Authenticate with username, password, and CAPTCHA.
+      description: |
+        Validates CAPTCHA before credentials. Creates a server-side session or
+        returns an MFA challenge when additional verification is required.
       security:
         - csrfHeader: []
       requestBody:
@@ -1747,6 +1771,102 @@ paths:
           $ref: "#/components/responses/TooManyRequests"
         "500":
           $ref: "#/components/responses/InternalServerError"
+  /api/v1/monitoring/overview:
+    get:
+      tags:
+        - Monitoring
+      operationId: getMonitoringOverview
+      summary: Sanitized monitoring overview for the portal SPA.
+      x-permissions:
+        - MONITORING_READ
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Monitoring overview snapshot.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/monitoring/metrics:
+    get:
+      tags:
+        - Monitoring
+      operationId: getMonitoringMetrics
+      summary: JVM and performance metric summary.
+      x-permissions:
+        - MONITORING_METRICS_READ
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Metrics summary.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/monitoring/logs:
+    get:
+      tags:
+        - Monitoring
+      operationId: getMonitoringLogs
+      summary: Sanitized operational log counters (no raw log bodies).
+      x-permissions:
+        - MONITORING_LOGS_READ
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Log summary counters.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/monitoring/traces:
+    get:
+      tags:
+        - Monitoring
+      operationId: getMonitoringTraces
+      summary: Trace correlation summary and Tempo/OTel status hints.
+      x-permissions:
+        - MONITORING_TRACES_READ
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Trace summary.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /api/v1/dashboard/summary:
     get:
       tags:
@@ -1909,6 +2029,12 @@ components:
             $ref: "#/components/schemas/ProblemDetail"
     UnprocessableEntity:
       description: Request is syntactically valid but violates validation rules.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    ServiceUnavailable:
+      description: Temporary dependency outage (e.g. CAPTCHA store unavailable).
       content:
         application/problem+json:
           schema:
@@ -2427,18 +2553,53 @@ components:
         expiresAt:
           type: string
           format: date-time
+    CaptchaChallenge:
+      type: object
+      additionalProperties: false
+      required:
+        - captchaId
+        - imageSvg
+        - expiresAt
+        - ttlSeconds
+      properties:
+        captchaId:
+          type: string
+          format: uuid
+        imageSvg:
+          type: string
+          description: Inline SVG markup for the CAPTCHA image.
+        expiresAt:
+          type: string
+          format: date-time
+        ttlSeconds:
+          type: integer
+          minimum: 1
+        revealAnswer:
+          type: string
+          description: |
+            Present only when `CAPTCHA_REVEAL_ANSWER=true` (automated tests).
+            Never enabled in the prod profile.
     LoginRequest:
       type: object
       additionalProperties: false
       required:
         - username
         - password
+        - captchaId
+        - captchaAnswer
       properties:
         username:
           type: string
         password:
           type: string
           format: password
+        captchaId:
+          type: string
+          format: uuid
+        captchaAnswer:
+          type: string
+          minLength: 4
+          maxLength: 12
         rememberDevice:
           type: boolean
           default: false

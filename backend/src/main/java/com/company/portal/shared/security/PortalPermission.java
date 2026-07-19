@@ -31,7 +31,11 @@ public enum PortalPermission {
     NOTIFICATION_SEND("notification:send"),
     MFA_MANAGE("mfa:manage"),
     SELF_READ("self:read"),
-    SELF_WRITE("self:write");
+    SELF_WRITE("self:write"),
+    MONITORING_READ("monitoring:read"),
+    MONITORING_METRICS_READ("monitoring:metrics:read"),
+    MONITORING_LOGS_READ("monitoring:logs:read"),
+    MONITORING_TRACES_READ("monitoring:traces:read");
 
     private static final Map<String, PortalPermission> BY_CODE = Arrays.stream(values())
             .collect(Collectors.toUnmodifiableMap(PortalPermission::code, p -> p));

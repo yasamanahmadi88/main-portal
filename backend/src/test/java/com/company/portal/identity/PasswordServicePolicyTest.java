@@ -11,6 +11,7 @@ import com.company.portal.identity.application.PasswordService;
 import com.company.portal.identity.domain.UserEntity;
 import com.company.portal.identity.repository.PasswordResetTokenRepository;
 import com.company.portal.identity.repository.UserRepository;
+import com.company.portal.identity.security.RateLimiter;
 import com.company.portal.notification.api.NotificationService;
 import com.company.portal.shared.config.PortalProperties;
 import com.company.portal.shared.error.PortalException;
@@ -36,9 +37,15 @@ class PasswordServicePolicyTest {
             "argon2",
             java.util.Map.of("argon2", new Argon2PasswordEncoder(16, 32, 1, 65_536, 3)));
     private final PortalProperties properties = new PortalProperties();
+    private final RateLimiter rateLimiter = mock(RateLimiter.class);
 
     private final PasswordService service = new PasswordService(
-            users, tokens, encoder, notifications, audit, properties);
+            users, tokens, encoder, notifications, audit, properties, rateLimiter);
+
+    {
+        when(rateLimiter.allow(any(), any(), any()))
+                .thenReturn(new RateLimiter.Decision(true, 0, 100, 0));
+    }
 
     @Test
     void rejectsShortPasswordOnChange() {

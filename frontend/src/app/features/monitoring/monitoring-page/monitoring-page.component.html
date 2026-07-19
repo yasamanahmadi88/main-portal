@@ -1,0 +1,204 @@
+<app-page-header
+  [title]="'monitoring.title'"
+  [subtitle]="'monitoring.subtitle'"
+>
+  <div actions>
+    <button mat-stroked-button type="button" (click)="reload()">
+      <mat-icon aria-hidden="true">refresh</mat-icon>
+      <span>{{ 'common.actions.refresh' | translate }}</span>
+    </button>
+  </div>
+</app-page-header>
+
+@if (state().status === 'loading') {
+  <div class="monitoring-grid">
+    @for (i of [1, 2, 3, 4, 5, 6, 7, 8]; track i) {
+      <div class="monitoring-card">
+        <app-skeleton height="14px" width="50%" />
+        <app-skeleton height="28px" width="40%" />
+        <app-skeleton height="12px" width="70%" />
+      </div>
+    }
+  </div>
+} @else if (state().status === 'error' || !state().overview) {
+  <app-empty-state
+    icon="cloud_off"
+    [title]="'common.errors.title'"
+    [description]="'common.errors.description'"
+  />
+} @else {
+  @if (generatedAt()) {
+    <p class="monitoring-meta">
+      <span>{{ 'monitoring.generatedAt' | translate }}</span>
+      <code class="app-technical" dir="ltr">{{ generatedAt() }}</code>
+    </p>
+  }
+
+  <div class="monitoring-grid">
+    <article class="monitoring-card">
+      <span class="monitoring-card__icon" data-tone="success" aria-hidden="true">
+        <mat-icon>monitor_heart</mat-icon>
+      </span>
+      <h2>{{ 'monitoring.cards.application.title' | translate }}</h2>
+      <app-status-badge
+        [tone]="statusTone(state().overview!.application.status)"
+        [label]="state().overview!.application.status"
+      />
+      <p>{{ 'monitoring.cards.application.description' | translate }}</p>
+      @if (state().overview!.application.components?.length) {
+        <ul class="monitoring-card__list">
+          @for (component of state().overview!.application.components!; track component) {
+            <li><code class="app-technical" dir="ltr">{{ component }}</code></li>
+          }
+        </ul>
+      }
+    </article>
+
+    <article class="monitoring-card">
+      <span class="monitoring-card__icon" data-tone="primary" aria-hidden="true">
+        <mat-icon>memory</mat-icon>
+      </span>
+      <h2>{{ 'monitoring.cards.jvm.title' | translate }}</h2>
+      <span class="monitoring-card__metric">
+        {{ state().overview!.jvm.heapUsageRatio | percent: '1.0-0' }}
+      </span>
+      <p>{{ 'monitoring.cards.jvm.description' | translate }}</p>
+      <dl class="monitoring-card__stats">
+        <div>
+          <dt>{{ 'monitoring.cards.jvm.heap' | translate }}</dt>
+          <dd class="app-technical" dir="ltr">
+            {{ formatBytes(state().overview!.jvm.heapUsedBytes) }}
+            /
+            {{ formatBytes(state().overview!.jvm.heapMaxBytes) }}
+          </dd>
+        </div>
+        <div>
+          <dt>{{ 'monitoring.cards.jvm.threads' | translate }}</dt>
+          <dd class="app-technical" dir="ltr">{{ state().overview!.jvm.threadCount }}</dd>
+        </div>
+      </dl>
+    </article>
+
+    <article class="monitoring-card">
+      <span class="monitoring-card__icon" data-tone="info" aria-hidden="true">
+        <mat-icon>storage</mat-icon>
+      </span>
+      <h2>{{ 'monitoring.cards.database.title' | translate }}</h2>
+      <app-status-badge
+        [tone]="statusTone(state().overview!.database.status)"
+        [label]="state().overview!.database.status"
+      />
+      <p>{{ 'monitoring.cards.database.description' | translate }}</p>
+      <dl class="monitoring-card__stats">
+        <div>
+          <dt>{{ 'monitoring.cards.database.activeSessions' | translate }}</dt>
+          <dd class="app-technical" dir="ltr">
+            {{ state().overview!.database.activeSessions ?? '—' }}
+          </dd>
+        </div>
+      </dl>
+    </article>
+
+    <article class="monitoring-card">
+      <span class="monitoring-card__icon" data-tone="accent" aria-hidden="true">
+        <mat-icon>bolt</mat-icon>
+      </span>
+      <h2>{{ 'monitoring.cards.redis.title' | translate }}</h2>
+      <app-status-badge
+        [tone]="statusTone(state().overview!.redis.status)"
+        [label]="state().overview!.redis.status"
+      />
+      <p>{{ 'monitoring.cards.redis.description' | translate }}</p>
+    </article>
+
+    <article class="monitoring-card">
+      <span class="monitoring-card__icon" data-tone="primary" aria-hidden="true">
+        <mat-icon>login</mat-icon>
+      </span>
+      <h2>{{ 'monitoring.cards.authentication.title' | translate }}</h2>
+      <span class="monitoring-card__metric app-technical" dir="ltr">
+        {{ state().overview!.authentication.successes }}
+      </span>
+      <p>{{ 'monitoring.cards.authentication.description' | translate }}</p>
+      <dl class="monitoring-card__stats">
+        <div>
+          <dt>{{ 'monitoring.cards.authentication.failures' | translate }}</dt>
+          <dd class="app-technical" dir="ltr">{{ state().overview!.authentication.failures }}</dd>
+        </div>
+        <div>
+          <dt>{{ 'monitoring.cards.authentication.window' | translate }}</dt>
+          <dd class="app-technical" dir="ltr">{{ state().overview!.authentication.window }}</dd>
+        </div>
+      </dl>
+    </article>
+
+    <article class="monitoring-card">
+      <span class="monitoring-card__icon" data-tone="danger" aria-hidden="true">
+        <mat-icon>shield</mat-icon>
+      </span>
+      <h2>{{ 'monitoring.cards.securityEvents.title' | translate }}</h2>
+      <span class="monitoring-card__metric app-technical" dir="ltr">
+        {{ state().overview!.securityEvents.unacknowledgedHighOrCritical }}
+      </span>
+      <p>{{ 'monitoring.cards.securityEvents.description' | translate }}</p>
+    </article>
+
+    <article class="monitoring-card">
+      <span class="monitoring-card__icon" data-tone="warning" aria-hidden="true">
+        <mat-icon>history</mat-icon>
+      </span>
+      <h2>{{ 'monitoring.cards.audit.title' | translate }}</h2>
+      <span class="monitoring-card__metric app-technical" dir="ltr">
+        {{ state().overview!.audit.eventsLast24h }}
+      </span>
+      <p>{{ 'monitoring.cards.audit.description' | translate }}</p>
+    </article>
+
+    <article class="monitoring-card">
+      <span class="monitoring-card__icon" data-tone="info" aria-hidden="true">
+        <mat-icon>speed</mat-icon>
+      </span>
+      <h2>{{ 'monitoring.cards.performance.title' | translate }}</h2>
+      <span class="monitoring-card__metric app-technical" dir="ltr">
+        {{ formatUptime(state().performance?.uptimeSeconds ?? state().overview!.jvm.uptimeSeconds) }}
+      </span>
+      <p>{{ 'monitoring.cards.performance.description' | translate }}</p>
+      <dl class="monitoring-card__stats">
+        @if (state().performance?.processors !== undefined && state().performance?.processors !== null) {
+          <div>
+            <dt>{{ 'monitoring.cards.performance.processors' | translate }}</dt>
+            <dd class="app-technical" dir="ltr">{{ state().performance!.processors }}</dd>
+          </div>
+        }
+        <div>
+          <dt>{{ 'monitoring.cards.performance.uptime' | translate }}</dt>
+          <dd class="app-technical" dir="ltr">
+            {{ formatUptime(state().performance?.uptimeSeconds ?? state().overview!.jvm.uptimeSeconds) }}
+          </dd>
+        </div>
+      </dl>
+    </article>
+  </div>
+
+  @if (grafanaUrl() || prometheusUrl()) {
+    <section class="monitoring-links" [attr.aria-label]="'monitoring.links.title' | translate">
+      <h3>{{ 'monitoring.links.title' | translate }}</h3>
+      <ul>
+        @if (grafanaUrl(); as grafana) {
+          <li>
+            <a [href]="grafana" target="_blank" rel="noopener noreferrer" class="app-technical" dir="ltr">
+              {{ grafana }}
+            </a>
+          </li>
+        }
+        @if (prometheusUrl(); as prometheus) {
+          <li>
+            <a [href]="prometheus" target="_blank" rel="noopener noreferrer" class="app-technical" dir="ltr">
+              {{ prometheus }}
+            </a>
+          </li>
+        }
+      </ul>
+    </section>
+  }
+}

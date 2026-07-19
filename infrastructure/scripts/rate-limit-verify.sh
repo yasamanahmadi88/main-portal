@@ -27,11 +27,13 @@ try:
     print(json.load(sys.stdin)["token"])
 except Exception:
     print("")' <<<"$body")"
+  # CAPTCHA fields present so the request reaches auth rate-limit / nginx zone
+  # (answers may be invalid — we only assert HTTP 429 under burst).
   code="$(curl -s -o /dev/null -w '%{http_code}' -c "$RATE_JAR" -b "$RATE_JAR" \
     -X POST "$BASE_URL/api/v1/auth/login" \
     -H 'Content-Type: application/json' \
     -H "X-XSRF-TOKEN: ${tok}" \
-    -d '{"username":"rate-limit-probe@portal.local","password":"WrongPassword!12345","rememberDevice":false}')"
+    -d '{"username":"rate-limit-probe@portal.local","password":"WrongPassword!12345","captchaId":"00000000-0000-0000-0000-000000000000","captchaAnswer":"XXXXX","rememberDevice":false}')"
   codes+=("$code")
   if [[ "$code" == "429" ]]; then
     saw_429=1

@@ -11,9 +11,11 @@ import com.company.portal.identity.domain.UserEntity;
 import com.company.portal.identity.domain.UserStatus;
 import com.company.portal.identity.repository.LoginAttemptRepository;
 import com.company.portal.identity.repository.UserRepository;
+import com.company.portal.identity.security.CaptchaService;
 import com.company.portal.identity.security.PortalUserDetails;
 import com.company.portal.identity.security.RateLimiter;
 import com.company.portal.identity.security.RequestContext;
+import com.company.portal.observability.AuthMetrics;
 import com.company.portal.securityevent.api.SecurityEventPublisher;
 import com.company.portal.securityevent.api.SecurityEventPublisher.SecurityEventLevel;
 import com.company.portal.shared.config.PortalProperties;
@@ -65,6 +67,7 @@ public class AuthenticationService {
     private final LoginAttemptRepository loginAttempts;
     private final PasswordEncoder passwordEncoder;
     private final RateLimiter rateLimiter;
+    private final CaptchaService captchaService;
     private final PortalProperties properties;
     private final AuditService auditService;
     private final SecurityEventPublisher securityEvents;
@@ -73,11 +76,13 @@ public class AuthenticationService {
     private final SessionService sessionService;
     private final ApplicationEventPublisher eventPublisher;
     private final SecurityContextRepository securityContextRepository;
+    private final AuthMetrics authMetrics;
 
     public AuthenticationService(UserRepository userRepository,
                                  LoginAttemptRepository loginAttempts,
                                  PasswordEncoder passwordEncoder,
                                  RateLimiter rateLimiter,
+                                 CaptchaService captchaService,
                                  PortalProperties properties,
                                  AuditService auditService,
                                  SecurityEventPublisher securityEvents,
@@ -85,11 +90,13 @@ public class AuthenticationService {
                                  LoginChallengeStore challengeStore,
                                  SessionService sessionService,
                                  ApplicationEventPublisher eventPublisher,
-                                 SecurityContextRepository securityContextRepository) {
+                                 SecurityContextRepository securityContextRepository,
+                                 AuthMetrics authMetrics) {
         this.userRepository = userRepository;
         this.loginAttempts = loginAttempts;
         this.passwordEncoder = passwordEncoder;
         this.rateLimiter = rateLimiter;
+        this.captchaService = captchaService;
         this.properties = properties;
         this.auditService = auditService;
         this.securityEvents = securityEvents;
@@ -98,6 +105,7 @@ public class AuthenticationService {
         this.sessionService = sessionService;
         this.eventPublisher = eventPublisher;
         this.securityContextRepository = securityContextRepository;
+        this.authMetrics = authMetrics;
     }
 
     /**
@@ -113,12 +121,16 @@ public class AuthenticationService {
 
     @Transactional
     public LoginOutcome login(String rawEmail, String password,
+                              String captchaId, String captchaAnswer,
                               HttpServletRequest request, HttpServletResponse response) {
         String ip = RequestContext.clientIp(request);
         String ua = RequestContext.userAgent(request);
         String emailNormalized = RequestContext.normalizeEmail(rawEmail);
 
         enforceRateLimit(ip, emailNormalized);
+        // CAPTCHA must succeed before credential verification (anti credential-stuffing).
+        captchaService.consume(captchaId, captchaAnswer);
+        authMetrics.loginAttempt();
 
         Optional<UserEntity> userOpt = emailNormalized == null || emailNormalized.isBlank()
                 ? Optional.empty()
@@ -126,6 +138,7 @@ public class AuthenticationService {
 
         if (userOpt.isEmpty()) {
             recordFailure(null, emailNormalized, ip, ua, "USER_NOT_FOUND");
+            authMetrics.loginFailure("user_not_found");
             throw genericInvalidCredentials();
         }
 
@@ -138,20 +151,24 @@ public class AuthenticationService {
             securityEvents.publish("AUTH_LOGIN_ON_LOCKED_ACCOUNT", SecurityEventLevel.HIGH,
                     user.getId(), ip, ua, RequestContext.correlationId(), null,
                     Map.of("email", emailNormalized));
+            authMetrics.loginFailure("locked");
             throw genericInvalidCredentials();
         }
         if (user.getStatus() == UserStatus.DISABLED || user.getStatus() == UserStatus.DELETED) {
             recordFailure(user.getId(), emailNormalized, ip, ua, "DISABLED");
+            authMetrics.loginFailure("disabled");
             throw genericInvalidCredentials();
         }
         if (user.getPasswordHash() == null
                 || !passwordEncoder.matches(password, user.getPasswordHash())) {
             registerFailure(user, emailNormalized, ip, ua);
+            authMetrics.loginFailure("bad_credentials");
             throw genericInvalidCredentials();
         }
 
         if (user.isMfaEnabled()) {
             recordAttempt(user.getId(), emailNormalized, ip, ua, "REQUIRES_MFA", null, true, false);
+            authMetrics.mfaChallenge();
             auditService.append(AuditContext.builder()
                     .eventType("AUTH_MFA_CHALLENGE_ISSUED")
                     .category("AUTH")
@@ -167,6 +184,7 @@ public class AuthenticationService {
 
         establishAuthenticatedSession(user, request, response, ip, ua, false);
         recordAttempt(user.getId(), emailNormalized, ip, ua, "SUCCESS", null, false, false);
+        authMetrics.loginSuccess();
         auditService.append(AuditContext.builder()
                 .eventType("AUTH_LOGIN_SUCCESS")
                 .category("AUTH")
@@ -192,6 +210,12 @@ public class AuthenticationService {
         String ip = RequestContext.clientIp(request);
         String ua = RequestContext.userAgent(request);
 
+        RateLimiter.Decision mfaLimit = rateLimiter.allow(
+                "mfa:verify", userId.toString(), properties.getRateLimit().getMfaVerify());
+        if (!mfaLimit.allowed()) {
+            throw new PortalException.RateLimited("Too many MFA attempts", mfaLimit.retryAfterSeconds());
+        }
+
         if (!mfaOk) {
             registerFailure(user, user.getEmailNormalized(), ip, ua);
             recordAttempt(user.getId(), user.getEmailNormalized(), ip, ua, "MFA_FAILED",
@@ -199,11 +223,13 @@ public class AuthenticationService {
             securityEvents.publish("AUTH_MFA_FAILED", SecurityEventLevel.MEDIUM,
                     user.getId(), ip, ua, RequestContext.correlationId(), null,
                     Map.of("email", user.getEmailNormalized()));
+            authMetrics.loginFailure("mfa_invalid");
             throw new PortalException.Unauthorized(ErrorCodes.MFA_INVALID, "Invalid MFA code");
         }
 
         establishAuthenticatedSession(user, request, response, ip, ua, true);
         recordAttempt(user.getId(), user.getEmailNormalized(), ip, ua, "SUCCESS", null, true, true);
+        authMetrics.loginSuccess();
         auditService.append(AuditContext.builder()
                 .eventType("AUTH_MFA_SUCCESS")
                 .category("AUTH")

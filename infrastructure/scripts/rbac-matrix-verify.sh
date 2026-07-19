@@ -17,6 +17,10 @@ log() { echo "$@" | tee -a "$EVIDENCE"; }
 pass() { log "PASS: $*"; }
 fail() { log "FAIL: $*"; exit 1; }
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=captcha-login.sh
+source "$SCRIPT_DIR/captcha-login.sh"
+
 cleanup() { rm -f "$COOKIE_JAR" /tmp/rbac-*.jar /tmp/rbac-*.json /tmp/rbac-fixture-user-id.txt; }
 trap cleanup EXIT
 
@@ -33,15 +37,17 @@ login() {
   # Retry on nginx/backend rate-limit leftovers from prior CI steps.
   for attempt in 1 2 3 4 5 6; do
     csrf "$jar"
+    # captcha_issue uses COOKIE_JAR; temporarily point at this jar
+    local saved_jar="$COOKIE_JAR"
+    COOKIE_JAR="$jar"
+    local payload
+    payload="$(login_json "$email" "$password")"
+    COOKIE_JAR="$saved_jar"
     code="$(curl -s -o /tmp/rbac-login.json -w '%{http_code}' -c "$jar" -b "$jar" \
       -X POST "$BASE_URL/api/v1/auth/login" \
       -H 'Content-Type: application/json' \
       -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
-      -d "$(python3 - <<PY
-import json
-print(json.dumps({"username":"$email","password":"$password","rememberDevice":False}))
-PY
-)")"
+      -d "$payload")"
     if [[ "$code" == "200" ]]; then
       return 0
     fi

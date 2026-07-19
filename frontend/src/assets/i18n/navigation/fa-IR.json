@@ -8,7 +8,13 @@
     "permissions": "دسترسی‌ها",
     "audit": "گزارش حسابرسی",
     "securityEvents": "رویدادهای امنیتی",
+    "monitoring": "مانیتورینگ",
     "settings": "تنظیمات",
-    "profile": "نمایه من"
+    "profile": "نمایه من",
+    "profileSecurity": "امنیت و احراز چندعاملی",
+    "shortcuts": {
+      "security": "رویدادهای امنیتی",
+      "monitoring": "مانیتورینگ"
+    }
   }
 }

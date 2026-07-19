@@ -98,10 +98,97 @@ export interface RecoveryCodes {
   recoveryCodes: string[];
 }
 
+export interface CaptchaChallenge {
+  captchaId: string;
+  imageSvg: string;
+  expiresAt: Iso8601;
+  ttlSeconds: number;
+  /** Present only when CAPTCHA_REVEAL_ANSWER=true (CI/e2e). Never show visually. */
+  revealAnswer?: string;
+}
+
 export interface LoginRequest {
   username: string;
   password: string;
+  captchaId: string;
+  captchaAnswer: string;
   rememberDevice?: boolean;
+}
+
+export interface MonitoringApplicationHealth {
+  status: string;
+  components?: string[];
+}
+
+export interface MonitoringJvm {
+  uptimeSeconds: number;
+  heapUsedBytes: number;
+  heapMaxBytes: number;
+  heapUsageRatio: number;
+  threadCount: number;
+}
+
+export interface MonitoringDatabase {
+  status: string;
+  activeSessions?: number;
+}
+
+export interface MonitoringRedis {
+  status: string;
+}
+
+export interface MonitoringAuthentication {
+  window: string;
+  failures: number;
+  successes: number;
+}
+
+export interface MonitoringSecurityEvents {
+  unacknowledgedHighOrCritical: number;
+}
+
+export interface MonitoringAudit {
+  eventsLast24h: number;
+}
+
+export interface MonitoringPerformance {
+  processors?: number;
+  uptimeSeconds?: number;
+}
+
+export interface MonitoringOverview {
+  generatedAt: Iso8601;
+  application: MonitoringApplicationHealth;
+  jvm: MonitoringJvm;
+  database: MonitoringDatabase;
+  redis: MonitoringRedis;
+  authentication: MonitoringAuthentication;
+  securityEvents: MonitoringSecurityEvents;
+  audit: MonitoringAudit;
+  links?: Record<string, string>;
+}
+
+export interface MonitoringMetricsSummary {
+  generatedAt: Iso8601;
+  jvm: MonitoringJvm;
+  application: MonitoringApplicationHealth;
+  performance: MonitoringPerformance;
+}
+
+export interface MonitoringLogsSummary {
+  generatedAt: Iso8601;
+  window: string;
+  securityEventCount: number;
+  auditEventCount: number;
+  note?: string;
+}
+
+export interface MonitoringTracesSummary {
+  generatedAt: Iso8601;
+  otelEnabled: boolean;
+  note?: string;
+  correlationHint?: string;
+  prometheusUrl?: string;
 }
 
 export interface MfaChallenge {

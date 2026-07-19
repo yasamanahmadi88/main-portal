@@ -23,6 +23,8 @@ public class PortalProperties {
     private Security security = new Security();
     private Password password = new Password();
     private Audit audit = new Audit();
+    private Captcha captcha = new Captcha();
+    private Monitoring monitoring = new Monitoring();
 
     public String getPublicBaseUrl() { return publicBaseUrl; }
     public void setPublicBaseUrl(String publicBaseUrl) { this.publicBaseUrl = publicBaseUrl; }
@@ -47,6 +49,12 @@ public class PortalProperties {
 
     public Audit getAudit() { return audit; }
     public void setAudit(Audit audit) { this.audit = audit; }
+
+    public Captcha getCaptcha() { return captcha; }
+    public void setCaptcha(Captcha captcha) { this.captcha = captcha; }
+
+    public Monitoring getMonitoring() { return monitoring; }
+    public void setMonitoring(Monitoring monitoring) { this.monitoring = monitoring; }
 
     public static class Session {
         private Duration idleTimeout = Duration.ofMinutes(30);
@@ -267,6 +275,36 @@ public class PortalProperties {
         public void setHashChainEnabled(boolean hashChainEnabled) { this.hashChainEnabled = hashChainEnabled; }
         public String getHashAlgorithm() { return hashAlgorithm; }
         public void setHashAlgorithm(String hashAlgorithm) { this.hashAlgorithm = hashAlgorithm; }
+    }
+
+    /**
+     * Login CAPTCHA. Always enabled — there is no development bypass flag.
+     * {@code revealAnswer} is only for automated tests / e2e and must stay false in production.
+     */
+    public static class Captcha {
+        private boolean enabled = true;
+        private Duration ttl = Duration.ofMinutes(2);
+        private int length = 5;
+        private boolean revealAnswer = false;
+
+        public boolean isEnabled() { return enabled; }
+        public void setEnabled(boolean enabled) { this.enabled = enabled; }
+        public Duration getTtl() { return ttl; }
+        public void setTtl(Duration ttl) { this.ttl = ttl; }
+        public int getLength() { return length; }
+        public void setLength(int length) { this.length = length; }
+        public boolean isRevealAnswer() { return revealAnswer; }
+        public void setRevealAnswer(boolean revealAnswer) { this.revealAnswer = revealAnswer; }
+    }
+
+    public static class Monitoring {
+        private String grafanaPublicUrl = "";
+        private String prometheusPublicUrl = "";
+
+        public String getGrafanaPublicUrl() { return grafanaPublicUrl; }
+        public void setGrafanaPublicUrl(String grafanaPublicUrl) { this.grafanaPublicUrl = grafanaPublicUrl; }
+        public String getPrometheusPublicUrl() { return prometheusPublicUrl; }
+        public void setPrometheusPublicUrl(String prometheusPublicUrl) { this.prometheusPublicUrl = prometheusPublicUrl; }
     }
 
     public String normalizeEmail(String email) {

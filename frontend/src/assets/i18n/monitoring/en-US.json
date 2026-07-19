@@ -1,0 +1,51 @@
+{
+  "monitoring": {
+    "title": "Monitoring",
+    "subtitle": "Operational health across application, data stores, and security signals.",
+    "generatedAt": "Snapshot generated at",
+    "cards": {
+      "application": {
+        "title": "Application Health",
+        "description": "Aggregate actuator health for core runtime dependencies."
+      },
+      "jvm": {
+        "title": "JVM",
+        "description": "Heap pressure and live thread count for the API process.",
+        "heap": "Heap",
+        "threads": "Threads"
+      },
+      "database": {
+        "title": "Database",
+        "description": "PostgreSQL connectivity and active portal sessions.",
+        "activeSessions": "Active sessions"
+      },
+      "redis": {
+        "title": "Redis",
+        "description": "Session store reachability (PING)."
+      },
+      "authentication": {
+        "title": "Authentication",
+        "description": "Successful sign-ins in the reporting window.",
+        "failures": "Failures",
+        "window": "Window"
+      },
+      "securityEvents": {
+        "title": "Security Events",
+        "description": "Unacknowledged high or critical security events."
+      },
+      "audit": {
+        "title": "Audit",
+        "description": "Audit events recorded in the last 24 hours."
+      },
+      "performance": {
+        "title": "Performance",
+        "description": "Process uptime and available processors.",
+        "processors": "Processors",
+        "uptime": "Uptime"
+      }
+    },
+    "links": {
+      "title": "Observability links"
+    }
+  }
+}

@@ -16,9 +16,12 @@ test.beforeEach(async () => {
 });
 
 test.describe('Login page (smoke)', () => {
-  test('renders the login form and both language options', async ({ page }) => {
+  test('renders the login form, captcha controls, and both language options', async ({ page }) => {
     await page.goto('/auth/login');
     await expect(page.getByRole('heading').first()).toBeVisible();
+    await expect(page.getByTestId('captcha-image')).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId('captcha-answer')).toBeVisible();
+    await expect(page.getByTestId('captcha-refresh')).toBeVisible();
     const languageButton = page.getByRole('button', {
       name: /language|زبان|فارسی|english/i
     });

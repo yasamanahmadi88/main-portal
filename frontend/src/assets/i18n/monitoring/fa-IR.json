@@ -1,0 +1,51 @@
+{
+  "monitoring": {
+    "title": "مانیتورینگ",
+    "subtitle": "سلامت عملیاتی برنامه، ذخیره‌سازها و سیگنال‌های امنیتی.",
+    "generatedAt": "زمان تولید نمای کلی",
+    "cards": {
+      "application": {
+        "title": "سلامت برنامه",
+        "description": "وضعیت تجمیعی سلامت وابستگی‌های اصلی زمان اجرا."
+      },
+      "jvm": {
+        "title": "JVM",
+        "description": "فشار حافظه هیپ و تعداد نخ‌های زنده فرایند API.",
+        "heap": "هیپ",
+        "threads": "نخ‌ها"
+      },
+      "database": {
+        "title": "پایگاه داده",
+        "description": "اتصال PostgreSQL و نشست‌های فعال پرتال.",
+        "activeSessions": "نشست‌های فعال"
+      },
+      "redis": {
+        "title": "Redis",
+        "description": "دسترس‌پذیری مخزن نشست (PING)."
+      },
+      "authentication": {
+        "title": "احراز هویت",
+        "description": "ورودهای موفق در بازه گزارش.",
+        "failures": "ناموفق",
+        "window": "بازه"
+      },
+      "securityEvents": {
+        "title": "رویدادهای امنیتی",
+        "description": "رویدادهای با شدت بالا یا بحرانی تأییدنشده."
+      },
+      "audit": {
+        "title": "حسابرسی",
+        "description": "رویدادهای حسابرسی ثبت‌شده در ۲۴ ساعت گذشته."
+      },
+      "performance": {
+        "title": "عملکرد",
+        "description": "مدت فعالیت فرایند و تعداد پردازنده‌ها.",
+        "processors": "پردازنده‌ها",
+        "uptime": "مدت فعالیت"
+      }
+    },
+    "links": {
+      "title": "پیوندهای مشاهده‌پذیری"
+    }
+  }
+}

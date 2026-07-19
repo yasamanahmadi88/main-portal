@@ -35,7 +35,13 @@ export const PRIMARY_NAV: readonly NavigationItem[] = [
     path: '/security-events',
     labelKey: 'navigation.securityEvents',
     icon: 'security',
-    permissions: ['SECURITY_EVENT_READ']
+    permissions: ['SECURITY_READ']
+  },
+  {
+    path: '/monitoring',
+    labelKey: 'navigation.monitoring',
+    icon: 'monitoring',
+    permissions: ['MONITORING_READ']
   },
   {
     path: '/settings',

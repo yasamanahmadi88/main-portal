@@ -1,0 +1,70 @@
+:host {
+  display: block;
+}
+
+.captcha {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-3);
+}
+
+.captcha__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--app-space-3);
+  flex-wrap: wrap;
+}
+
+.captcha__label {
+  font-weight: 600;
+  font-size: var(--app-font-size-sm);
+  color: var(--app-color-text-secondary);
+}
+
+.captcha__refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--app-space-1);
+}
+
+.captcha__image-wrap {
+  min-block-size: 88px;
+  border-radius: var(--app-radius-md);
+  border: 1px solid var(--app-color-outline);
+  background-color: var(--app-color-surface-sunken);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--app-space-3);
+  overflow: hidden;
+}
+
+.captcha__svg {
+  inline-size: 100%;
+  display: flex;
+  justify-content: center;
+  line-height: 0;
+
+  :deep(svg) {
+    max-inline-size: 100%;
+    block-size: auto;
+  }
+}
+
+.captcha__loading,
+.captcha__error {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--app-space-2);
+  color: var(--app-color-text-muted);
+  font-size: var(--app-font-size-sm);
+}
+
+.captcha__error {
+  color: var(--app-color-danger);
+}
+
+.captcha__answer-field {
+  width: 100%;
+}

@@ -8,7 +8,13 @@
     "permissions": "Permissions",
     "audit": "Audit log",
     "securityEvents": "Security events",
+    "monitoring": "Monitoring",
     "settings": "Settings",
-    "profile": "My profile"
+    "profile": "My profile",
+    "profileSecurity": "Security & MFA",
+    "shortcuts": {
+      "security": "Security events",
+      "monitoring": "Monitoring"
+    }
   }
 }

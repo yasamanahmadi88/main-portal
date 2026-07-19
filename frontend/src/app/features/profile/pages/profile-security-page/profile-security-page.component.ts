@@ -19,7 +19,8 @@ import { ToastService } from '@core/observability/toast.service';
 import {
   PasswordInputComponent,
   StatusBadgeComponent,
-  openConfirmDialog
+  openConfirmDialog,
+  openPasswordConfirmDialog
 } from '@shared/ui';
 import type {
   MfaEnrollmentResult,
@@ -141,14 +142,21 @@ export class ProfileSecurityPageComponent {
       tone: 'danger'
     });
     if (!ok) return;
-    const password = prompt('Confirm your password');
+    const password = await openPasswordConfirmDialog(this.dialog, {
+      titleKey: 'common.passwordConfirm.title',
+      messageKey: 'common.passwordConfirm.message',
+      tone: 'danger'
+    });
     if (!password) return;
     await firstValueFrom(this.me.deleteMfaFactor(factor.id, { password }));
     await this.refresh();
   }
 
   async regenerateRecoveryCodes(): Promise<void> {
-    const password = prompt('Confirm your password');
+    const password = await openPasswordConfirmDialog(this.dialog, {
+      titleKey: 'common.passwordConfirm.title',
+      messageKey: 'common.passwordConfirm.message'
+    });
     if (!password) return;
     const result = await firstValueFrom(this.me.regenerateRecoveryCodes({ password }));
     this.newRecoveryCodes.set(result.recoveryCodes);

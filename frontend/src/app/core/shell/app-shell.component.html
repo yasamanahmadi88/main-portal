@@ -66,6 +66,28 @@
         </div>
       </div>
       <div class="app-topbar__end">
+        @if (canSecurityShortcut()) {
+          <a
+            mat-icon-button
+            routerLink="/security-events"
+            data-testid="nav-shortcut-security"
+            [attr.aria-label]="'navigation.shortcuts.security' | translate"
+            [matTooltip]="'navigation.shortcuts.security' | translate"
+          >
+            <mat-icon aria-hidden="true">security</mat-icon>
+          </a>
+        }
+        @if (canMonitoringShortcut()) {
+          <a
+            mat-icon-button
+            routerLink="/monitoring"
+            data-testid="nav-shortcut-monitoring"
+            [attr.aria-label]="'navigation.shortcuts.monitoring' | translate"
+            [matTooltip]="'navigation.shortcuts.monitoring' | translate"
+          >
+            <mat-icon aria-hidden="true">monitoring</mat-icon>
+          </a>
+        }
         <app-language-switcher />
         <app-theme-switcher />
         <app-notifications-menu />

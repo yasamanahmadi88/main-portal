@@ -27,40 +27,16 @@ frontend/     Angular frontend scaffold
 docs/         Architecture, security, testing, operations, and ADRs
 ```
 
-## Local startup
+## Local startup (Docker-first)
 
-Prerequisites:
-
-- Java 25
-- Maven wrapper from `backend/`
-- Node.js compatible with Angular 22
-- npm
-- PostgreSQL and Redis configured according to `.env.example`
-
-Backend:
-
-```bash
-cd backend
-./mvnw spring-boot:run
-```
-
-Frontend:
-
-```bash
-cd frontend
-npm install
-npm start
-```
-
-### Docker Compose (recommended)
+**Recommended path — Git + Docker + Docker Compose only.** No host Java, Node, npm, PostgreSQL, or Redis install is required to run the portal.
 
 ```bash
 cp .env.example .env
 # edit .env — set MFA_ENCRYPTION_KEY_BASE64 (openssl rand -base64 32),
 # database passwords, GRAFANA_ADMIN_PASSWORD and Redis password.
-
-# Local host ports for Postgres/Redis/Mailpit (optional):
-# docker compose -f compose.yaml -f compose.dev.yaml --env-file .env up -d --build
+# For Playwright / verify scripts against a local stack, set CAPTCHA_REVEAL_ANSWER=true
+# (never in production — the prod profile refuses to start if reveal is enabled).
 
 docker compose -f compose.yaml config -q       # validate
 docker compose -f compose.yaml up -d --build   # build + start core stack
@@ -74,10 +50,25 @@ infrastructure/scripts/wait-for-healthy.sh -v postgres redis backend frontend ma
 
 The portal is then reachable at `http://localhost:8080` (Mailpit UI at
 `:8025`, Grafana at `:3000` when the observability overlay is up).
+Monitoring inside the SPA: `/monitoring` (requires `MONITORING_READ`).
+
+Optional host-port overlays for Postgres/Redis/Mailpit:
+
+```bash
+docker compose -f compose.yaml -f compose.dev.yaml --env-file .env up -d --build
+```
 
 See `docs/operations/deployment.md` for production requirements
 (TLS termination, secret management, image provenance, backups) and
 `docs/operations/runbook.md` for day-to-day operational notes.
+
+### Optional: native toolchain (contributors)
+
+For IDE/unit-test iteration without containers:
+
+- Java 25 + Maven wrapper (`backend/`)
+- Node.js compatible with Angular 22 + npm (`frontend/`)
+- PostgreSQL and Redis (or compose services with published ports)
 
 ## Architecture summary
 
@@ -112,13 +103,15 @@ Key documents:
 
 ## Verification status
 
-Do not infer production readiness from design documents alone. Quality gates are tracked in:
+Do not infer production readiness from design documents alone. Quality gates and residual gaps are tracked in:
 
 - `QUALITY-GATES.md`
+- `PROGRESS.md`
+- `docs/audit/enterprise-gap-analysis.md`
 - `docs/security/asvs-5-checklist.md`
 - `docs/risk-register.md`
 
-Most security controls are currently documented as design targets and remain **NOT VERIFIED** until implementation and tests are added.
+Core session/CSRF/RBAC/audit/CAPTCHA/i18n/theme controls are implemented; live compose evidence is produced by GitHub Actions `fullstack-verify`. External pen-test and production TLS/WAF remain required before production.
 
 ## Contributing
 

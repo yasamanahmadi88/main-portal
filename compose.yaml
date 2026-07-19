@@ -187,6 +187,12 @@ services:
       PORTAL_BOOTSTRAP_ADMIN_EMAIL: ${PORTAL_BOOTSTRAP_ADMIN_EMAIL:-}
       PORTAL_BOOTSTRAP_ADMIN_PASSWORD: ${PORTAL_BOOTSTRAP_ADMIN_PASSWORD:-}
       PORTAL_BOOTSTRAP_ADMIN_DISPLAY_NAME: ${PORTAL_BOOTSTRAP_ADMIN_DISPLAY_NAME:-Portal Administrator}
+      # CAPTCHA — always enforced. Reveal answers only for automated verify/e2e (never prod).
+      CAPTCHA_TTL: ${CAPTCHA_TTL:-2m}
+      CAPTCHA_LENGTH: ${CAPTCHA_LENGTH:-5}
+      CAPTCHA_REVEAL_ANSWER: ${CAPTCHA_REVEAL_ANSWER:-false}
+      GRAFANA_PUBLIC_URL: ${GRAFANA_PUBLIC_URL:-http://localhost:3000}
+      PROMETHEUS_PUBLIC_URL: ${PROMETHEUS_PUBLIC_URL:-http://localhost:9090}
       JAVA_TOOL_OPTIONS: >-
         -XX:MaxRAMPercentage=75
         -XX:+ExitOnOutOfMemoryError

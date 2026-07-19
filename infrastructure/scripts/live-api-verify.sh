@@ -17,6 +17,10 @@ log() { echo "$@" | tee -a "$EVIDENCE"; }
 pass() { log "PASS: $*"; }
 fail() { log "FAIL: $*"; exit 1; }
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=captcha-login.sh
+source "$SCRIPT_DIR/captcha-login.sh"
+
 cleanup() { rm -f "$COOKIE_JAR"; }
 trap cleanup EXIT
 
@@ -47,12 +51,12 @@ code="$(curl -s -o /tmp/csrf-reject.json -w '%{http_code}' -c "$COOKIE_JAR" -b "
 [[ "$code" == "403" ]] && pass "CSRF rejection without token (HTTP $code)" || fail "expected 403 CSRF, got $code"
 
 csrf
-# Failed login — generic failure, no enumeration
+# Failed login — generic failure, no enumeration (valid CAPTCHA required first)
 code="$(curl -s -o /tmp/login-fail.json -w '%{http_code}' -c "$COOKIE_JAR" -b "$COOKIE_JAR" \
   -X POST "$BASE_URL/api/v1/auth/login" \
   -H 'Content-Type: application/json' \
   -H "$(hdr)" \
-  -d '{"username":"does-not-exist@example.com","password":"WrongPassword!12345","rememberDevice":false}')"
+  -d "$(login_json 'does-not-exist@example.com' 'WrongPassword!12345')")"
 [[ "$code" == "401" ]] && pass "failed login returns 401" || fail "expected 401, got $code"
 grep -qiE 'does-not-exist|not found|no such user' /tmp/login-fail.json && fail "login error enumerates account" || pass "login failure does not enumerate account"
 
@@ -63,11 +67,7 @@ code="$(curl -s -D /tmp/login-headers.txt -o /tmp/login-ok.json -w '%{http_code}
   -X POST "$BASE_URL/api/v1/auth/login" \
   -H 'Content-Type: application/json' \
   -H "$(hdr)" \
-  -d "$(python3 - <<PY
-import json,os
-print(json.dumps({"username":os.environ["ADMIN_EMAIL"],"password":os.environ["ADMIN_PASSWORD"],"rememberDevice":False}))
-PY
-)")"
+  -d "$(login_json "$ADMIN_EMAIL" "$ADMIN_PASSWORD")")"
 [[ "$code" == "200" ]] || { cat /tmp/login-ok.json >>"$EVIDENCE"; fail "login expected 200 got $code"; }
 cp /tmp/login-ok.json /tmp/login-ok2.json
 python3 - <<'PY' /tmp/login-ok.json

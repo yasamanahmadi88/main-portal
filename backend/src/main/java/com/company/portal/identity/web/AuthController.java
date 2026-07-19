@@ -5,6 +5,7 @@ import com.company.portal.identity.application.AuthenticationService.LoginOutcom
 import com.company.portal.identity.application.MfaService;
 import com.company.portal.identity.application.PasswordService;
 import com.company.portal.identity.application.UserMapper;
+import com.company.portal.identity.security.CaptchaService;
 import com.company.portal.identity.security.RequestContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -13,6 +14,8 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -40,24 +43,48 @@ public class AuthController {
     private final MfaService mfaService;
     private final UserMapper userMapper;
     private final com.company.portal.identity.application.LoginChallengeStore challengeStore;
+    private final CaptchaService captchaService;
 
     public AuthController(AuthenticationService authService,
                           PasswordService passwordService,
                           MfaService mfaService,
                           UserMapper userMapper,
-                          com.company.portal.identity.application.LoginChallengeStore challengeStore) {
+                          com.company.portal.identity.application.LoginChallengeStore challengeStore,
+                          CaptchaService captchaService) {
         this.authService = authService;
         this.passwordService = passwordService;
         this.mfaService = mfaService;
         this.userMapper = userMapper;
         this.challengeStore = challengeStore;
+        this.captchaService = captchaService;
+    }
+
+    @GetMapping("/captcha")
+    public Map<String, Object> issueCaptcha() {
+        CaptchaService.IssuedCaptcha issued = captchaService.issue();
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("captchaId", issued.captchaId());
+        body.put("imageSvg", issued.imageSvg());
+        body.put("expiresAt", OffsetDateTime.ofInstant(issued.expiresAt(), ZoneOffset.UTC).toString());
+        body.put("ttlSeconds", issued.ttlSeconds());
+        if (issued.revealAnswer() != null) {
+            // Present only when CAPTCHA_REVEAL_ANSWER=true (tests/e2e). Never in prod.
+            body.put("revealAnswer", issued.revealAnswer());
+        }
+        return body;
     }
 
     @PostMapping(value = "/login", consumes = MediaType.APPLICATION_JSON_VALUE)
     public LoginResponse login(@RequestBody @Valid LoginRequest request,
                                HttpServletRequest http,
                                HttpServletResponse response) {
-        LoginOutcome outcome = authService.login(request.username(), request.password(), http, response);
+        LoginOutcome outcome = authService.login(
+                request.username(),
+                request.password(),
+                request.captchaId(),
+                request.captchaAnswer(),
+                http,
+                response);
         if (outcome.status() == LoginOutcome.Status.MFA_REQUIRED) {
             return LoginResponse.mfaRequired(new MfaChallenge(
                     outcome.challengeId(), List.of("TOTP", "RECOVERY_CODE"),
@@ -120,6 +147,8 @@ public class AuthController {
 
     public record LoginRequest(@NotBlank @Email String username,
                                @NotBlank @Size(min = 8, max = 200) String password,
+                               @NotBlank @Size(min = 8, max = 64) String captchaId,
+                               @NotBlank @Size(min = 4, max = 12) String captchaAnswer,
                                boolean rememberDevice) { }
 
     public record LoginResponse(String status, UserDto user, Object session, MfaChallenge mfaChallenge) {

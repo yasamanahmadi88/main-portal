@@ -1,0 +1,59 @@
+<div class="captcha" role="group" [attr.aria-label]="'authentication.captcha.label' | translate">
+  <div class="captcha__header">
+    <span class="captcha__label">{{ 'authentication.captcha.label' | translate }}</span>
+    <button
+      mat-stroked-button
+      type="button"
+      data-testid="captcha-refresh"
+      class="captcha__refresh"
+      [disabled]="loading()"
+      (click)="refresh()"
+      [attr.aria-label]="'authentication.captcha.refresh' | translate"
+    >
+      <mat-icon aria-hidden="true">refresh</mat-icon>
+      <span>{{ 'authentication.captcha.refresh' | translate }}</span>
+    </button>
+  </div>
+
+  <div class="captcha__image-wrap" data-testid="captcha-image">
+    @if (loading()) {
+      <div class="captcha__loading" aria-live="polite">
+        <mat-progress-spinner mode="indeterminate" diameter="28" />
+        <span>{{ 'common.labels.loading' | translate }}</span>
+      </div>
+    } @else if (loadError()) {
+      <div class="captcha__error" role="alert">
+        <mat-icon aria-hidden="true">error_outline</mat-icon>
+        <span>{{ 'authentication.captcha.loadError' | translate }}</span>
+      </div>
+    } @else if (imageHtml()) {
+      <div class="captcha__svg" [innerHTML]="imageHtml()" aria-hidden="true"></div>
+    }
+  </div>
+
+  @if (revealAnswer(); as answer) {
+    <span
+      data-testid="captcha-reveal"
+      class="app-visually-hidden"
+      [attr.data-answer]="answer"
+      aria-hidden="true"
+    ></span>
+  }
+
+  <mat-form-field appearance="outline" class="captcha__answer-field">
+    <mat-label>{{ 'authentication.captcha.answerLabel' | translate }}</mat-label>
+    <input
+      matInput
+      type="text"
+      autocomplete="off"
+      autocapitalize="none"
+      spellcheck="false"
+      inputmode="text"
+      data-testid="captcha-answer"
+      [disabled]="loading() || !ready()"
+      [value]="captchaAnswer()"
+      (input)="onAnswerInput($event)"
+      [attr.aria-required]="true"
+    />
+  </mat-form-field>
+</div>

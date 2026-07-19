@@ -81,6 +81,11 @@
       "title": "Notifications",
       "empty": "You're all caught up."
     },
+    "passwordConfirm": {
+      "title": "Confirm your password",
+      "message": "Enter your current password to continue.",
+      "passwordLabel": "Current password"
+    },
     "errors": {
       "title": "Something went wrong",
       "description": "We couldn't complete that request. Please try again.",

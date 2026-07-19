@@ -98,7 +98,12 @@ describe('AuthService', () => {
   });
 
   it('completes login and stores user', async () => {
-    const promise = service.login({ username: 'x', password: 'y' });
+    const promise = service.login({
+      username: 'x',
+      password: 'y',
+      captchaId: 'captcha-1',
+      captchaAnswer: 'AB12'
+    });
     await flush();
     const loginResponse: LoginResponse = { status: 'AUTHENTICATED', user: sampleUser };
     controller.expectOne('/api/v1/auth/login').flush(loginResponse);
@@ -114,7 +119,12 @@ describe('AuthService', () => {
   });
 
   it('holds MFA challenge when required', async () => {
-    const promise = service.login({ username: 'x', password: 'y' });
+    const promise = service.login({
+      username: 'x',
+      password: 'y',
+      captchaId: 'captcha-1',
+      captchaAnswer: 'AB12'
+    });
     await flush();
     controller.expectOne('/api/v1/auth/login').flush({
       status: 'MFA_REQUIRED',

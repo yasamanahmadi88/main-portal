@@ -9,6 +9,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.company.portal.support.AbstractIntegrationTest;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +20,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 /**
  * Live security checks against Testcontainers PostgreSQL + Redis (when Docker is available).
@@ -31,6 +34,7 @@ class LiveSecurityIntegrationTest extends AbstractIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private ObjectMapper objectMapper;
 
   @DynamicPropertySource
   static void bootstrapAdmin(DynamicPropertyRegistry registry) {
@@ -38,6 +42,25 @@ class LiveSecurityIntegrationTest extends AbstractIntegrationTest {
     registry.add("portal.bootstrap.admin-email", () -> "admin@example.com");
     registry.add("portal.bootstrap.admin-password", () -> "ChangeMeNow!123");
     registry.add("portal.bootstrap.admin-display-name", () -> "Test Admin");
+    registry.add("portal.captcha.reveal-answer", () -> "true");
+  }
+
+  private String loginJson(String username, String password) throws Exception {
+    MvcResult captcha =
+        mockMvc
+            .perform(get("/api/v1/auth/captcha"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.captchaId").isNotEmpty())
+            .andExpect(jsonPath("$.revealAnswer").isNotEmpty())
+            .andReturn();
+    JsonNode node = objectMapper.readTree(captcha.getResponse().getContentAsString());
+    return objectMapper.writeValueAsString(
+        java.util.Map.of(
+            "username", username,
+            "password", password,
+            "captchaId", node.get("captchaId").asText(),
+            "captchaAnswer", node.get("revealAnswer").asText(),
+            "rememberDevice", false));
   }
 
   @Test
@@ -48,7 +71,7 @@ class LiveSecurityIntegrationTest extends AbstractIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
-                    {"username":"nobody@example.com","password":"x","rememberDevice":false}
+                    {"username":"nobody@example.com","password":"x","captchaId":"00000000-0000-0000-0000-000000000000","captchaAnswer":"ABCDE","rememberDevice":false}
                     """))
         .andExpect(status().isForbidden());
   }
@@ -60,10 +83,7 @@ class LiveSecurityIntegrationTest extends AbstractIntegrationTest {
             post("/api/v1/auth/login")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(
-                    """
-                    {"username":"admin@example.com","password":"ChangeMeNow!123","rememberDevice":false}
-                    """))
+                .content(loginJson("admin@example.com", "ChangeMeNow!123")))
         .andExpect(status().isOk())
         .andExpect(cookie().exists("PORTAL_SESSION"))
         .andExpect(cookie().httpOnly("PORTAL_SESSION", true))
@@ -78,10 +98,7 @@ class LiveSecurityIntegrationTest extends AbstractIntegrationTest {
                 post("/api/v1/auth/login")
                     .with(csrf())
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content(
-                        """
-                        {"username":"admin@example.com","password":"ChangeMeNow!123","rememberDevice":false}
-                        """))
+                    .content(loginJson("admin@example.com", "ChangeMeNow!123")))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("AUTHENTICATED"))
             .andReturn();
@@ -105,12 +122,46 @@ class LiveSecurityIntegrationTest extends AbstractIntegrationTest {
             post("/api/v1/auth/login")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(
-                    """
-                    {"username":"missing-user@example.com","password":"wrong-password","rememberDevice":false}
-                    """))
+                .content(loginJson("missing-user@example.com", "wrong-password")))
         .andExpect(status().isUnauthorized())
         .andExpect(jsonPath("$.detail").value("Invalid credentials"));
+  }
+
+  @Test
+  void invalidCaptchaBlocksLogin() throws Exception {
+    MvcResult captcha =
+        mockMvc.perform(get("/api/v1/auth/captcha")).andExpect(status().isOk()).andReturn();
+    JsonNode node = objectMapper.readTree(captcha.getResponse().getContentAsString());
+    String body =
+        objectMapper.writeValueAsString(
+            java.util.Map.of(
+                "username", "admin@example.com",
+                "password", "ChangeMeNow!123",
+                "captchaId", node.get("captchaId").asText(),
+                "captchaAnswer", "!!!!!",
+                "rememberDevice", false));
+    mockMvc
+        .perform(
+            post("/api/v1/auth/login")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("captcha_invalid"));
+  }
+
+  @Test
+  void missingCaptchaRejected() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/auth/login")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"username":"admin@example.com","password":"ChangeMeNow!123","rememberDevice":false}
+                    """))
+        .andExpect(status().isUnprocessableEntity());
   }
 
   @Test

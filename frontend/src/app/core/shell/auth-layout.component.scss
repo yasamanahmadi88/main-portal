@@ -13,7 +13,7 @@
 .auth-shell__brand {
   position: relative;
   overflow: hidden;
-  color: #fff;
+  color: var(--app-color-brand-on);
   background: var(--app-brand-gradient);
   padding: var(--app-space-16) var(--app-space-10);
   display: flex;
@@ -27,7 +27,7 @@
   inset: -25% -10% auto auto;
   block-size: 60%;
   inline-size: 60%;
-  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.24), transparent 60%);
+  background: radial-gradient(circle at center, var(--app-color-brand-glow), transparent 60%);
   pointer-events: none;
   z-index: -1;
 }
@@ -48,13 +48,13 @@
   font-size: var(--app-font-size-4xl);
   line-height: 1.1;
   margin: 0;
-  color: #fff;
+  color: var(--app-color-brand-on);
   font-weight: 700;
 }
 
 .auth-brand__subtitle {
   font-size: var(--app-font-size-lg);
-  color: rgba(255, 255, 255, 0.88);
+  color: var(--app-color-brand-on-muted);
   margin: 0;
   line-height: 1.5;
 }
@@ -72,12 +72,12 @@
   display: flex;
   align-items: center;
   gap: var(--app-space-3);
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--app-color-brand-on-muted);
 }
 
 .auth-brand__points mat-icon {
-  color: rgba(255, 255, 255, 0.95);
-  background: rgba(255, 255, 255, 0.12);
+  color: var(--app-color-brand-on);
+  background: var(--app-color-brand-on-soft);
   border-radius: 999px;
   padding: 6px;
   width: 32px;

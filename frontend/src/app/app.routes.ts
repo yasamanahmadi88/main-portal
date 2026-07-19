@@ -146,12 +146,22 @@ export const routes: Routes = [
       {
         path: 'security-events',
         canActivate: [permissionGuard],
-        data: { permissions: ['SECURITY_EVENT_READ'] },
+        data: { permissions: ['SECURITY_READ'] },
         loadComponent: () =>
           import(
             '@features/security-events/security-events-page/security-events-page.component'
           ).then((m) => m.SecurityEventsPageComponent),
         title: 'securityEvents.title'
+      },
+      {
+        path: 'monitoring',
+        canActivate: [permissionGuard],
+        data: { permissions: ['MONITORING_READ'] },
+        loadComponent: () =>
+          import('@features/monitoring/monitoring-page/monitoring-page.component').then(
+            (m) => m.MonitoringPageComponent
+          ),
+        title: 'monitoring.title'
       },
       {
         path: 'settings',
