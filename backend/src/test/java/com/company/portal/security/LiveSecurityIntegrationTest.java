@@ -165,7 +165,8 @@ class LiveSecurityIntegrationTest extends AbstractIntegrationTest {
                     """
                     {"username":"admin@example.com","password":"ChangeMeNow!123","rememberDevice":false}
                     """))
-        .andExpect(status().isUnprocessableEntity());
+        // Missing required record components fail deserialization (400) before Bean Validation (422).
+        .andExpect(status().isBadRequest());
   }
 
   @Test
