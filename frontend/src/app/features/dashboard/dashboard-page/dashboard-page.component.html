@@ -1,0 +1,80 @@
+<app-page-header
+  [title]="'dashboard.title'"
+  [subtitle]="'dashboard.subtitle'"
+>
+  <div actions>
+    <a mat-stroked-button routerLink="/users">
+      <mat-icon aria-hidden="true">group</mat-icon>
+      <span>{{ 'dashboard.quickActions.manageUsers' | translate }}</span>
+    </a>
+    <a mat-stroked-button routerLink="/security-events">
+      <mat-icon aria-hidden="true">security</mat-icon>
+      <span>{{ 'dashboard.quickActions.reviewSecurityEvents' | translate }}</span>
+    </a>
+    <a mat-stroked-button routerLink="/audit">
+      <mat-icon aria-hidden="true">history</mat-icon>
+      <span>{{ 'dashboard.quickActions.openAudit' | translate }}</span>
+    </a>
+  </div>
+</app-page-header>
+
+@if (state().status === 'loading') {
+  <div class="dashboard-grid">
+    @for (i of [1, 2, 3, 4, 5]; track i) {
+      <div class="dashboard-card">
+        <app-skeleton height="14px" width="60%" />
+        <app-skeleton height="36px" width="40%" />
+        <app-skeleton height="12px" width="80%" />
+      </div>
+    }
+  </div>
+} @else if (state().status === 'error' || !state().summary) {
+  <app-empty-state
+    icon="cloud_off"
+    [title]="'common.errors.title'"
+    [description]="'common.errors.description'"
+  />
+} @else {
+  <div class="dashboard-grid">
+    <article class="dashboard-card">
+      <span class="dashboard-card__icon" data-tone="primary" aria-hidden="true">
+        <mat-icon>group</mat-icon>
+      </span>
+      <h2>{{ 'dashboard.cards.activeUsers.title' | translate }}</h2>
+      <span class="dashboard-card__metric">{{ state().summary!.activeUsers | number }}</span>
+      <p>{{ 'dashboard.cards.activeUsers.description' | translate }}</p>
+    </article>
+    <article class="dashboard-card">
+      <span class="dashboard-card__icon" data-tone="info" aria-hidden="true">
+        <mat-icon>devices</mat-icon>
+      </span>
+      <h2>{{ 'dashboard.cards.activeSessions.title' | translate }}</h2>
+      <span class="dashboard-card__metric">{{ state().summary!.activeSessions | number }}</span>
+      <p>{{ 'dashboard.cards.activeSessions.description' | translate }}</p>
+    </article>
+    <article class="dashboard-card">
+      <span class="dashboard-card__icon" data-tone="warning" aria-hidden="true">
+        <mat-icon>notification_important</mat-icon>
+      </span>
+      <h2>{{ 'dashboard.cards.unacknowledgedEvents.title' | translate }}</h2>
+      <span class="dashboard-card__metric">{{ state().summary!.securityEvents.unacknowledged | number }}</span>
+      <p>{{ 'dashboard.cards.unacknowledgedEvents.description' | translate }}</p>
+    </article>
+    <article class="dashboard-card">
+      <span class="dashboard-card__icon" data-tone="danger" aria-hidden="true">
+        <mat-icon>report</mat-icon>
+      </span>
+      <h2>{{ 'dashboard.cards.criticalEvents.title' | translate }}</h2>
+      <span class="dashboard-card__metric">{{ state().summary!.securityEvents.critical | number }}</span>
+      <p>{{ 'dashboard.cards.criticalEvents.description' | translate }}</p>
+    </article>
+    <article class="dashboard-card">
+      <span class="dashboard-card__icon" data-tone="accent" aria-hidden="true">
+        <mat-icon>history</mat-icon>
+      </span>
+      <h2>{{ 'dashboard.cards.auditEventsToday.title' | translate }}</h2>
+      <span class="dashboard-card__metric">{{ state().summary!.auditEventsToday | number }}</span>
+      <p>{{ 'dashboard.cards.auditEventsToday.description' | translate }}</p>
+    </article>
+  </div>
+}

@@ -1,0 +1,74 @@
+<app-page-header [title]="'roles.title'" [subtitle]="'roles.subtitle'">
+  <div actions>
+    <a mat-flat-button color="primary" routerLink="/roles/new">
+      <mat-icon aria-hidden="true">add</mat-icon>
+      <span>{{ 'roles.actions.create' | translate }}</span>
+    </a>
+  </div>
+</app-page-header>
+
+@if (state().loading && !state().page) {
+  <div class="app-card">
+    @for (i of [1,2,3,4,5]; track i) {
+      <app-skeleton height="18px" width="100%" />
+    }
+  </div>
+} @else if (state().error) {
+  <app-error-state (retry)="reload()" />
+} @else if (state().page && state().page!.content.length === 0) {
+  <app-empty-state icon="shield_person" [title]="'roles.empty'" />
+} @else if (state().page) {
+  <div class="app-card users-table__card">
+    <div class="app-scroll-shadow">
+      <table mat-table [dataSource]="state().page!.content">
+        <ng-container matColumnDef="code">
+          <th mat-header-cell *matHeaderCellDef>{{ 'roles.columns.code' | translate }}</th>
+          <td mat-cell *matCellDef="let role">
+            <a class="role-code" [routerLink]="['/roles', role.id]">{{ role.code }}</a>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef>{{ 'roles.columns.name' | translate }}</th>
+          <td mat-cell *matCellDef="let role">{{ role.name }}</td>
+        </ng-container>
+        <ng-container matColumnDef="description">
+          <th mat-header-cell *matHeaderCellDef>{{ 'roles.columns.description' | translate }}</th>
+          <td mat-cell *matCellDef="let role" class="role-description">
+            {{ role.description || ('common.labels.notAvailable' | translate) }}
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="permissions">
+          <th mat-header-cell *matHeaderCellDef>{{ 'roles.columns.permissions' | translate }}</th>
+          <td mat-cell *matCellDef="let role">
+            <app-status-badge tone="info" [label]="null">
+              {{ role.permissions.length }}
+            </app-status-badge>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="system">
+          <th mat-header-cell *matHeaderCellDef>{{ 'roles.columns.system' | translate }}</th>
+          <td mat-cell *matCellDef="let role">
+            @if (role.system) {
+              <app-status-badge tone="warning" label="common.labels.system" />
+            } @else {
+              <app-status-badge tone="neutral" label="common.labels.custom" />
+            }
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="updatedAt">
+          <th mat-header-cell *matHeaderCellDef>{{ 'common.labels.updatedAt' | translate }}</th>
+          <td mat-cell *matCellDef="let role">{{ role.updatedAt | date: 'medium' }}</td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="columns"></tr>
+        <tr mat-row *matRowDef="let row; columns: columns"></tr>
+      </table>
+    </div>
+    <mat-paginator
+      [length]="state().page!.totalElements"
+      [pageIndex]="state().page!.page"
+      [pageSize]="state().page!.size"
+      [pageSizeOptions]="[10, 20, 50, 100]"
+      (page)="onPage($event)"
+    />
+  </div>
+}

@@ -1,0 +1,120 @@
+name: sbom
+
+on:
+  push:
+    branches:
+      - main
+      - "cursor/**"
+    paths:
+      - "backend/pom.xml"
+      - "backend/src/**"
+      - "frontend/package.json"
+      - "frontend/package-lock.json"
+      - ".github/workflows/sbom.yml"
+  pull_request:
+    paths:
+      - "backend/pom.xml"
+      - "frontend/package.json"
+      - "frontend/package-lock.json"
+      - ".github/workflows/sbom.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sbom-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ------------------------------------------------------------------
+  #  Backend SBOM — the CycloneDX Maven plugin already runs at
+  #  `package` (see backend/pom.xml).  We re-invoke the plugin's goal
+  #  in isolation so we don't have to run all tests just to produce
+  #  target/bom.json.
+  # ------------------------------------------------------------------
+  backend-sbom:
+    name: backend cyclonedx
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Java 25 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+
+      - name: Generate CycloneDX SBOM
+        working-directory: backend
+        run: |
+          chmod +x mvnw
+          ./mvnw -B -ntp -DskipTests \
+                 org.cyclonedx:cyclonedx-maven-plugin:makeAggregateBom
+          ls -la target/bom.json target/bom.xml
+          cp target/bom.json target/portal-backend-sbom.json
+          cp target/bom.xml target/portal-backend-sbom.xml
+
+      - name: Upload SBOM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-sbom
+          if-no-files-found: error
+          path: |
+            backend/target/portal-backend-sbom.json
+            backend/target/portal-backend-sbom.xml
+            backend/target/bom.json
+            backend/target/bom.xml
+
+  # ------------------------------------------------------------------
+  #  Frontend SBOM — CycloneDX Node JS reads package-lock.json and
+  #  emits a CycloneDX 1.6 JSON document.
+  # ------------------------------------------------------------------
+  frontend-sbom:
+    name: frontend cyclonedx
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.15.0"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install @cyclonedx/cyclonedx-npm
+        run: npm install --no-save --no-audit --no-fund @cyclonedx/cyclonedx-npm@2.1.0
+
+      - name: Install project dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Generate SBOM
+        run: |
+          npx --yes @cyclonedx/cyclonedx-npm@2.1.0 \
+            --output-format JSON \
+            --output-file portal-frontend-sbom.json \
+            --package-lock-only \
+            --ignore-npm-errors
+          test -f portal-frontend-sbom.json
+          ls -la portal-frontend-sbom.json
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-sbom
+          if-no-files-found: error
+          path: frontend/portal-frontend-sbom.json

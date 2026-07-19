@@ -1,0 +1,18 @@
+{
+  "validation": {
+    "required": "This field is required.",
+    "email": "Please enter a valid email address.",
+    "minLength": "Must be at least {{requiredLength}} characters.",
+    "maxLength": "Must be at most {{requiredLength}} characters.",
+    "pattern": "Value does not match the expected format.",
+    "min": "Must be at least {{min}}.",
+    "max": "Must be at most {{max}}.",
+    "mismatch": "Values do not match.",
+    "passwordStrength": "Use at least 12 characters with a mix of upper, lower, digits, and a symbol.",
+    "usernamePattern": "Only letters, digits, dots, hyphens and underscores are allowed.",
+    "errors": {
+      "generic": "The information you submitted is invalid.",
+      "server": "Server rejected the request. Please review and try again."
+    }
+  }
+}

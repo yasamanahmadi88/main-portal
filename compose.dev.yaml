@@ -1,0 +1,24 @@
+# Dev port publishing overlay for local development.
+# Usage: docker compose -f compose.yaml -f compose.dev.yaml --env-file .env up -d --build
+#
+# Publishes DB/Redis/Mailpit/backend for host tooling while keeping the same
+# same-origin SPA+API edge on PORTAL_HTTP_PORT (default 8080).
+
+services:
+  postgres:
+    ports:
+      - "${POSTGRES_HOST_PORT:-5433}:5432"
+
+  redis:
+    ports:
+      - "${REDIS_HOST_PORT:-6380}:6379"
+
+  mailpit:
+    ports:
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+
+  backend:
+    ports:
+      - "${BACKEND_HOST_PORT:-18080}:8080"
+      - "${BACKEND_MGMT_HOST_PORT:-18081}:8081"

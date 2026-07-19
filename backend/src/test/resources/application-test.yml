@@ -1,0 +1,40 @@
+spring:
+  docker:
+    compose:
+      enabled: false
+  flyway:
+    enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  session:
+    store-type: redis
+    data:
+      redis:
+        repository-type: indexed
+        namespace: portal:session
+        flush-mode: on_save
+
+server:
+  servlet:
+    session:
+      cookie:
+        secure: false
+
+portal:
+  bootstrap:
+    enabled: false
+  session:
+    cookie:
+      name: PORTAL_SESSION
+      secure: false
+      host-prefix: false
+  security:
+    allowed-origins:
+      - http://localhost:4200
+  mfa:
+    encryption:
+      active-key-id: test-key-1
+      keys:
+        test-key-1: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=

@@ -1,0 +1,31 @@
+{
+  "securityEvents": {
+    "title": "Security events",
+    "subtitle": "Signals that may indicate abuse, attack, or misconfiguration.",
+    "filters": {
+      "severity": "Severity",
+      "acknowledged": "Acknowledged",
+      "from": "From",
+      "to": "To"
+    },
+    "columns": {
+      "occurredAt": "Detected",
+      "type": "Type",
+      "severity": "Severity",
+      "user": "User",
+      "ip": "IP",
+      "acknowledged": "Acknowledged"
+    },
+    "severity": {
+      "LOW": "Low",
+      "MEDIUM": "Medium",
+      "HIGH": "High",
+      "CRITICAL": "Critical"
+    },
+    "actions": {
+      "acknowledge": "Acknowledge",
+      "acknowledgeSuccess": "Event acknowledged."
+    },
+    "empty": "No security events to review."
+  }
+}

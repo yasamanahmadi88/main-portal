@@ -1,0 +1,10 @@
+---
+description: Testing rules
+globs:
+  - "**/*Test*"
+  - "**/*.spec.ts"
+  - frontend/e2e/**
+---
+- Prefer Testcontainers for PostgreSQL/Redis over mocks for security paths.
+- RBAC matrix tests are mandatory for privilege boundaries.
+- Do not game coverage; mark gates NOT VERIFIED without evidence.

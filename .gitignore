@@ -1,0 +1,65 @@
+# Secrets and local env
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.p12
+*.jks
+secrets/
+**/application-local.yml
+**/application-local.properties
+
+# Build outputs
+**/target/
+**/dist/
+**/out/
+**/build/
+**/.angular/
+**/coverage/
+**/test-results/
+**/playwright-report/
+**/blob-report/
+**/.nyc_output/
+
+# Dependencies
+**/node_modules/
+**/.pnpm-store/
+
+# IDE / OS
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs and temp
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+*.bak
+
+# Local databases / runtime
+*.db
+*.sqlite
+*.h2.db
+dump.rdb
+
+# Maven wrapper jar is committed; local caches are not
+.mvn/wrapper/maven-wrapper.jar.bak
+
+# Generated SBOM locally (CI publishes artifacts)
+**/bom.json
+**/bom.xml
+
+# Docker
+.docker/
+
+# Cursor / agent local
+.cursor/cache/

@@ -1,0 +1,14 @@
+{
+  "navigation": {
+    "primary": "Primary navigation",
+    "toggle": "Toggle navigation",
+    "dashboard": "Dashboard",
+    "users": "Users",
+    "roles": "Roles",
+    "permissions": "Permissions",
+    "audit": "Audit log",
+    "securityEvents": "Security events",
+    "settings": "Settings",
+    "profile": "My profile"
+  }
+}

@@ -1,0 +1,90 @@
+<app-page-header [title]="'securityEvents.title'" [subtitle]="'securityEvents.subtitle'" />
+
+<section class="filters app-card app-card--muted">
+  <mat-form-field appearance="outline">
+    <mat-label>{{ 'securityEvents.filters.severity' | translate }}</mat-label>
+    <mat-select [value]="severity()" (selectionChange)="severity.set($any($event.value)); pageIndex.set(0)">
+      <mat-option value="">{{ 'common.labels.notAvailable' | translate }}</mat-option>
+      @for (s of severityOptions; track s) {
+        <mat-option [value]="s">{{ 'securityEvents.severity.' + s | translate }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+  <mat-form-field appearance="outline">
+    <mat-label>{{ 'securityEvents.filters.acknowledged' | translate }}</mat-label>
+    <mat-select [value]="acknowledged()" (selectionChange)="acknowledged.set($any($event.value)); pageIndex.set(0)">
+      <mat-option value="">{{ 'common.labels.notAvailable' | translate }}</mat-option>
+      <mat-option value="true">{{ 'common.labels.yes' | translate }}</mat-option>
+      <mat-option value="false">{{ 'common.labels.no' | translate }}</mat-option>
+    </mat-select>
+  </mat-form-field>
+</section>
+
+@if (state().loading && !state().page) {
+  <div class="app-card"><app-skeleton height="16px" /></div>
+} @else if (state().error) {
+  <app-error-state (retry)="pageIndex.set(pageIndex())" />
+} @else if (state().page && state().page!.content.length === 0) {
+  <app-empty-state icon="shield" [title]="'securityEvents.empty'" />
+} @else if (state().page) {
+  <div class="app-card">
+    <div class="app-scroll-shadow">
+      <table mat-table [dataSource]="state().page!.content">
+        <ng-container matColumnDef="occurredAt">
+          <th mat-header-cell *matHeaderCellDef>{{ 'securityEvents.columns.occurredAt' | translate }}</th>
+          <td mat-cell *matCellDef="let event">{{ event.occurredAt | date: 'medium' }}</td>
+        </ng-container>
+        <ng-container matColumnDef="type">
+          <th mat-header-cell *matHeaderCellDef>{{ 'securityEvents.columns.type' | translate }}</th>
+          <td mat-cell *matCellDef="let event"><code>{{ event.type }}</code></td>
+        </ng-container>
+        <ng-container matColumnDef="severity">
+          <th mat-header-cell *matHeaderCellDef>{{ 'securityEvents.columns.severity' | translate }}</th>
+          <td mat-cell *matCellDef="let event">
+            <app-status-badge
+              [tone]="severityTone(event.severity)"
+              [label]="'securityEvents.severity.' + event.severity"
+            />
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="user">
+          <th mat-header-cell *matHeaderCellDef>{{ 'securityEvents.columns.user' | translate }}</th>
+          <td mat-cell *matCellDef="let event">{{ event.userId || '—' }}</td>
+        </ng-container>
+        <ng-container matColumnDef="ip">
+          <th mat-header-cell *matHeaderCellDef>{{ 'securityEvents.columns.ip' | translate }}</th>
+          <td mat-cell *matCellDef="let event">{{ event.ipAddress || '—' }}</td>
+        </ng-container>
+        <ng-container matColumnDef="acknowledged">
+          <th mat-header-cell *matHeaderCellDef>{{ 'securityEvents.columns.acknowledged' | translate }}</th>
+          <td mat-cell *matCellDef="let event">
+            @if (event.acknowledged) {
+              <app-status-badge tone="success" label="common.labels.yes" />
+            } @else {
+              <app-status-badge tone="warning" label="common.labels.no" />
+            }
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef></th>
+          <td mat-cell *matCellDef="let event">
+            @if (!event.acknowledged) {
+              <button mat-stroked-button type="button" (click)="acknowledge(event)">
+                {{ 'securityEvents.actions.acknowledge' | translate }}
+              </button>
+            }
+          </td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="columns"></tr>
+        <tr mat-row *matRowDef="let row; columns: columns"></tr>
+      </table>
+    </div>
+    <mat-paginator
+      [length]="state().page!.totalElements"
+      [pageIndex]="state().page!.page"
+      [pageSize]="state().page!.size"
+      [pageSizeOptions]="[10, 20, 50, 100]"
+      (page)="onPage($event)"
+    />
+  </div>
+}

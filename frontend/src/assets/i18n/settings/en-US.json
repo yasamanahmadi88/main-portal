@@ -1,0 +1,23 @@
+{
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Portal-wide preferences and policies.",
+    "fields": {
+      "defaultLanguage": "Default language",
+      "defaultTheme": "Default theme",
+      "sessionTimeoutMinutes": "Session timeout (minutes)",
+      "mfaRequiredForAdmins": "Require MFA for administrators",
+      "auditRetentionDays": "Audit retention (days)",
+      "loginRateLimitPerMinute": "Login rate limit (per minute)"
+    },
+    "hints": {
+      "sessionTimeout": "Between 5 and 1440 minutes.",
+      "auditRetention": "At least 30 days.",
+      "loginRate": "Per IP address."
+    },
+    "actions": {
+      "save": "Save settings",
+      "saved": "Settings saved."
+    }
+  }
+}

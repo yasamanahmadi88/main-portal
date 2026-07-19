@@ -1,0 +1,35 @@
+# Files/directories excluded from the docker build context by default.
+# Individual Dockerfiles may narrow this further with their own .dockerignore.
+
+.git
+.github
+.gitignore
+.gitattributes
+.editorconfig
+.env
+.env.*
+!.env.example
+node_modules
+**/node_modules
+backend/target
+backend/logs
+backend/.idea
+frontend/dist
+frontend/.angular
+frontend/coverage
+frontend/playwright-report
+frontend/test-results
+frontend/node_modules
+frontend/.nx
+frontend/.cache
+**/*.log
+**/*.tmp
+**/.DS_Store
+**/*.class
+docs
+CHANGELOG.md
+CONTRIBUTING.md
+SECURITY.md
+PROGRESS.md
+QUALITY-GATES.md
+NEXT-STEPS.md

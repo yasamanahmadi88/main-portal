@@ -1,0 +1,54 @@
+{
+  "users": {
+    "title": "Users",
+    "subtitle": "Manage the people who can access the portal.",
+    "actions": {
+      "create": "New user",
+      "assignRoles": "Assign roles",
+      "resetPassword": "Send password reset",
+      "resetMfa": "Reset MFA",
+      "revokeSessions": "Revoke all sessions",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "unlock": "Unlock"
+    },
+    "filters": {
+      "search": "Search by name, email, or username",
+      "status": "Status",
+      "role": "Role"
+    },
+    "columns": {
+      "user": "User",
+      "email": "Email",
+      "status": "Status",
+      "roles": "Roles",
+      "lastLogin": "Last login",
+      "actions": "Actions"
+    },
+    "status": {
+      "ACTIVE": "Active",
+      "INACTIVE": "Inactive",
+      "LOCKED": "Locked",
+      "PENDING": "Pending"
+    },
+    "form": {
+      "usernameLabel": "Username",
+      "emailLabel": "Email",
+      "displayNameLabel": "Display name",
+      "rolesLabel": "Roles",
+      "sendInviteLabel": "Send invitation email",
+      "createSuccess": "User created.",
+      "updateSuccess": "User updated."
+    },
+    "detail": {
+      "roles": "Roles",
+      "permissions": "Effective permissions",
+      "activity": "Recent activity"
+    },
+    "empty": "No users match your filters yet.",
+    "confirm": {
+      "deactivate": "Deactivate this user? They will lose access until reactivated.",
+      "revokeSessions": "Revoke every session for this user?"
+    }
+  }
+}

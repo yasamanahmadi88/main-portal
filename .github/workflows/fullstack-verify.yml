@@ -1,0 +1,409 @@
+name: fullstack-verify
+
+# Launches the complete Docker Compose stack and runs live verification:
+# bootstrap, API security, RBAC matrix, audit DB privileges, Playwright+Axe,
+# and OWASP ZAP baseline. Required to close Cloud-Agent Docker limitations.
+
+on:
+  push:
+    branches:
+      - "cursor/**"
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: fullstack-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PORTAL_HTTP_PORT: "8080"
+  REPORT_DIR: ${{ github.workspace }}/artifacts/live-evidence
+
+jobs:
+  live-stack:
+    name: compose + live verification
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+
+      - name: Set up Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.15.0"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Generate ephemeral secrets
+        id: secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Avoid shell/psql metacharacters (! ' " ` $) in passwords used by
+          # docker-entrypoint init scripts and redis-cli healthchecks.
+          MFA_KEY="$(openssl rand -base64 32)"
+          BOOT_PW="Boot$(openssl rand -hex 16)Aa1"
+          APP_PW="App$(openssl rand -hex 16)Aa1"
+          MIG_PW="Mig$(openssl rand -hex 16)Aa1"
+          SUPER_PW="Super$(openssl rand -hex 16)Aa1"
+          REDIS_PW="Redis$(openssl rand -hex 16)Aa1"
+          # Mask secrets so they never appear in Actions logs / step env dumps.
+          {
+            echo "::add-mask::${MFA_KEY}"
+            echo "::add-mask::${BOOT_PW}"
+            echo "::add-mask::${APP_PW}"
+            echo "::add-mask::${MIG_PW}"
+            echo "::add-mask::${SUPER_PW}"
+            echo "::add-mask::${REDIS_PW}"
+          }
+          {
+            echo "MFA_KEY=${MFA_KEY}"
+            echo "BOOT_PW=${BOOT_PW}"
+            echo "APP_PW=${APP_PW}"
+            echo "MIG_PW=${MIG_PW}"
+            echo "SUPER_PW=${SUPER_PW}"
+            echo "REDIS_PW=${REDIS_PW}"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "MFA_ENCRYPTION_KEY_ID=local-v1"
+            echo "MFA_ENCRYPTION_KEY_BASE64=${MFA_KEY}"
+            echo "POSTGRES_DB=portal"
+            echo "POSTGRES_USER=portal_app"
+            echo "POSTGRES_PASSWORD=${APP_PW}"
+            echo "POSTGRES_MIGRATION_USER=portal_migrate"
+            echo "POSTGRES_MIGRATION_PASSWORD=${MIG_PW}"
+            echo "POSTGRES_SUPERUSER=portal_superuser"
+            echo "POSTGRES_SUPERUSER_PASSWORD=${SUPER_PW}"
+            echo "REDIS_PASSWORD=${REDIS_PW}"
+            echo "SPRING_PROFILES_ACTIVE=local"
+            echo "PORTAL_PUBLIC_BASE_URL=http://localhost:8080"
+            echo "PORTAL_BOOTSTRAP_ENABLED=true"
+            echo "PORTAL_BOOTSTRAP_ADMIN_EMAIL=ci-admin@portal.local"
+            echo "PORTAL_BOOTSTRAP_ADMIN_PASSWORD=${BOOT_PW}"
+            echo "PORTAL_BOOTSTRAP_ADMIN_DISPLAY_NAME=CI Bootstrap Admin"
+            echo "PORTAL_HTTP_PORT=8080"
+            echo "SESSION_COOKIE_SECURE=false"
+            echo "TELEMETRY_ENABLED=false"
+            echo "OTEL_SDK_DISABLED=true"
+            echo "GRAFANA_ADMIN_USER=admin"
+            echo "GRAFANA_ADMIN_PASSWORD=Grafana$(openssl rand -hex 16)Aa1"
+          } > "$GITHUB_WORKSPACE/.env"
+          chmod 600 "$GITHUB_WORKSPACE/.env"
+
+      - name: Validate compose
+        run: |
+          docker compose --env-file .env -f compose.yaml config -q
+          # Observability overlay validated separately (not started in this job)
+          docker compose --env-file .env -f compose.yaml -f compose.observability.yaml config -q
+
+      - name: Build images
+        run: |
+          # Rebuild frontend without cache so nginx config COPY layers are never stale.
+          docker compose --env-file .env -f compose.yaml build --no-cache frontend
+          docker compose --env-file .env -f compose.yaml build
+
+      - name: Start stack
+        run: |
+          set -euo pipefail
+          mkdir -p "$REPORT_DIR"
+          # Stage dependencies first so a backend crash still leaves logs collectible.
+          docker compose --env-file .env -f compose.yaml up -d postgres redis mailpit
+          for i in $(seq 1 40); do
+            docker compose --env-file .env ps --format json > "$REPORT_DIR/ps.json" || true
+            if python3 infrastructure/scripts/wait-compose-services.py "$REPORT_DIR/ps.json" postgres redis mailpit; then
+              break
+            fi
+            echo "waiting for deps ($i)..."
+            sleep 3
+            if [[ $i -eq 40 ]]; then
+              docker compose --env-file .env logs --no-color postgres redis mailpit | tee "$REPORT_DIR/compose-logs.txt" | tail -200
+              exit 1
+            fi
+          done
+
+          # Fail fast if init did not create Flyway / app roles (do not print passwords).
+          docker compose --env-file .env logs --no-color postgres | tee "$REPORT_DIR/postgres-init.txt" | tail -80
+          if ! grep -q "Portal database roles provisioned successfully" "$REPORT_DIR/postgres-init.txt"; then
+            echo "ERROR: postgres role bootstrap did not complete" >&2
+            exit 1
+          fi
+          MIG_USER="$(grep '^POSTGRES_MIGRATION_USER=' .env | cut -d= -f2-)"
+          APP_USER="$(grep '^POSTGRES_USER=' .env | cut -d= -f2-)"
+          ROLES="$(docker compose --env-file .env exec -T postgres \
+            psql -U portal_superuser -d portal -tAc \
+            "SELECT string_agg(rolname, ',' ORDER BY rolname) FROM pg_roles WHERE rolname IN ('${MIG_USER}','${APP_USER}');" \
+            | tr -d '[:space:]')"
+          echo "provisioned_roles=${ROLES}" | tee "$REPORT_DIR/db-roles.txt"
+          echo "$ROLES" | grep -q "${MIG_USER}" || { echo "missing migration role ${MIG_USER}" >&2; exit 1; }
+          echo "$ROLES" | grep -q "${APP_USER}" || { echo "missing app role ${APP_USER}" >&2; exit 1; }
+          # Auth probe as migration role (password via env inside container, not echoed).
+          docker compose --env-file .env exec -T \
+            -e PGPASSWORD="$(grep '^POSTGRES_MIGRATION_PASSWORD=' .env | cut -d= -f2-)" \
+            postgres \
+            psql -U "${MIG_USER}" -d portal -tAc "SELECT current_user;" \
+            | tee -a "$REPORT_DIR/db-roles.txt" | grep -qx "${MIG_USER}"
+
+          docker compose --env-file .env -f compose.yaml up -d --no-deps backend
+          for i in $(seq 1 72); do
+            docker compose --env-file .env ps --format json > "$REPORT_DIR/ps.json" || true
+            if python3 infrastructure/scripts/wait-compose-services.py "$REPORT_DIR/ps.json" backend; then
+              echo "backend healthy"
+              break
+            fi
+            # Fail fast if the JVM process exited
+            if docker compose --env-file .env ps backend | grep -qiE 'Exit|exited'; then
+              docker compose --env-file .env logs --no-color backend | tee "$REPORT_DIR/backend-logs.txt" | tail -400
+              exit 1
+            fi
+            echo "waiting for backend ($i)..."
+            sleep 5
+            if [[ $i -eq 72 ]]; then
+              docker compose --env-file .env logs --no-color backend | tee "$REPORT_DIR/backend-logs.txt" | tail -400
+              exit 1
+            fi
+          done
+
+          docker compose --env-file .env -f compose.yaml up -d --no-deps frontend
+          for i in $(seq 1 60); do
+            docker compose --env-file .env ps --format json > "$REPORT_DIR/ps.json" || true
+            if python3 infrastructure/scripts/check-compose-health.py "$REPORT_DIR/ps.json"; then
+              if curl -fsS http://localhost:8080/healthz >/dev/null 2>&1 \
+                 && curl -fsS http://localhost:8080/api/v1/auth/csrf >/dev/null 2>&1; then
+                echo "stack healthy"
+                break
+              fi
+            fi
+            echo "waiting for full stack ($i)..."
+            docker compose --env-file .env ps
+            sleep 5
+            if [[ $i -eq 60 ]]; then
+              docker compose --env-file .env ps | tee "$REPORT_DIR/compose-ps.txt"
+              docker compose --env-file .env logs --no-color | tee "$REPORT_DIR/compose-logs.txt" | tail -300
+              exit 1
+            fi
+          done
+          docker compose --env-file .env ps | tee "$REPORT_DIR/compose-ps.txt"
+          docker compose --env-file .env logs --no-color > "$REPORT_DIR/compose-logs.txt"
+
+      - name: Redact secrets from logs artifact
+        if: always()
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("artifacts/live-evidence/compose-logs.txt")
+          if not p.exists():
+              raise SystemExit(0)
+          text=p.read_text(errors="replace")
+          for key in Path(".env").read_text().splitlines():
+              if "=" in key and not key.strip().startswith("#"):
+                  k,v=key.split("=",1)
+                  if v and any(x in k for x in ("PASSWORD","KEY_BASE64","SECRET")):
+                      text=text.replace(v,"***REDACTED***")
+          p.write_text(text)
+          PY
+
+      - name: Bootstrap verification
+        env:
+          BASE_URL: http://localhost:8080
+          PORTAL_BOOTSTRAP_ADMIN_EMAIL: ci-admin@portal.local
+          PORTAL_BOOTSTRAP_ADMIN_PASSWORD: ${{ steps.secrets.outputs.BOOT_PW }}
+          POSTGRES_SUPERUSER: portal_superuser
+          POSTGRES_DB: portal
+          REPORT_DIR: ${{ env.REPORT_DIR }}
+        run: |
+          chmod +x infrastructure/scripts/*.sh
+          ./infrastructure/scripts/bootstrap-verify.sh
+
+      - name: Live API verification
+        env:
+          BASE_URL: http://localhost:8080
+          ADMIN_EMAIL: ci-admin@portal.local
+          ADMIN_PASSWORD: ${{ steps.secrets.outputs.BOOT_PW }}
+          REPORT_DIR: ${{ env.REPORT_DIR }}
+        run: ./infrastructure/scripts/live-api-verify.sh
+
+      - name: RBAC matrix verification
+        env:
+          BASE_URL: http://localhost:8080
+          ADMIN_EMAIL: ci-admin@portal.local
+          ADMIN_PASSWORD: ${{ steps.secrets.outputs.BOOT_PW }}
+          REPORT_DIR: ${{ env.REPORT_DIR }}
+        run: |
+          # Allow nginx login zone tokens to refill after live-api-verify.
+          sleep 15
+          ./infrastructure/scripts/rbac-matrix-verify.sh
+
+      - name: Audit DB append-only verification
+        env:
+          POSTGRES_SUPERUSER: portal_superuser
+          POSTGRES_DB: portal
+          POSTGRES_USER: portal_app
+          REPORT_DIR: ${{ env.REPORT_DIR }}
+        run: ./infrastructure/scripts/audit-db-verify.sh
+
+      - name: Observability / logging verification
+        env:
+          REPORT_DIR: ${{ env.REPORT_DIR }}
+        run: |
+          chmod +x infrastructure/scripts/observability-verify.sh
+          ./infrastructure/scripts/observability-verify.sh
+
+      - name: Install frontend deps + Playwright
+        working-directory: frontend
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Cool down login rate-limit window
+        run: |
+          # Prior API/RBAC scripts hit /auth/login; give Redis/nginx windows time to refill
+          # before Playwright exercises UI + API logins.
+          sleep 35
+
+      - name: SPA boot smoke (pre-Playwright)
+        env:
+          BASE_URL: http://localhost:8080
+          REPORT_DIR: ${{ env.REPORT_DIR }}
+        run: |
+          chmod +x infrastructure/scripts/spa-boot-verify.sh
+          ./infrastructure/scripts/spa-boot-verify.sh
+
+      - name: Playwright + Axe live e2e
+        working-directory: frontend
+        env:
+          PORTAL_E2E_BASE_URL: http://localhost:8080
+          PORTAL_E2E_ADMIN_EMAIL: ci-admin@portal.local
+          PORTAL_E2E_ADMIN_PASSWORD: ${{ steps.secrets.outputs.BOOT_PW }}
+          PORTAL_E2E_REQUIRE_LIVE: "1"
+        run: |
+          set +e
+          npx playwright test e2e/live-portal.spec.ts --reporter=list,html
+          status=$?
+          mkdir -p ../artifacts/live-evidence/playwright
+          cp -r playwright-report ../artifacts/live-evidence/playwright/ 2>/dev/null || true
+          cp -r test-results ../artifacts/live-evidence/playwright-results 2>/dev/null || true
+          exit $status
+
+      - name: OWASP ZAP baseline
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: "http://localhost:8080"
+          cmd_options: "-a -j"
+          allow_issue_writing: false
+          fail_action: false
+          artifact_name: zap-baseline-report
+        continue-on-error: true
+
+      - name: Second bootstrap is a no-op
+        env:
+          BASE_URL: http://localhost:8080
+          PORTAL_BOOTSTRAP_ADMIN_EMAIL: ci-admin@portal.local
+          PORTAL_BOOTSTRAP_ADMIN_PASSWORD: ${{ steps.secrets.outputs.BOOT_PW }}
+        run: |
+          set -euo pipefail
+          # RBAC matrix / live tests may have created additional users; bootstrap
+          # must be a no-op whenever ANY users already exist — not only when
+          # the database still has exactly one row.
+          BEFORE=$(docker compose --env-file .env exec -T postgres \
+            psql -U portal_superuser -d portal -tAc "SELECT COUNT(*) FROM users;" | tr -d '[:space:]')
+          SUPER_BEFORE=$(docker compose --env-file .env exec -T postgres \
+            psql -U portal_superuser -d portal -tAc \
+            "SELECT COUNT(*) FROM users u JOIN user_roles ur ON ur.user_id=u.id JOIN roles r ON r.id=ur.role_id WHERE r.code='SUPER_ADMIN';" \
+            | tr -d '[:space:]')
+          echo "user_count_before_restart=$BEFORE super_admin_before=$SUPER_BEFORE" | tee -a "$REPORT_DIR/bootstrap-verify.txt"
+          test -n "$BEFORE" && test "$BEFORE" -ge 1
+
+          docker compose --env-file .env restart backend
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:8080/api/v1/auth/csrf >/dev/null 2>&1; then break; fi
+            sleep 3
+            if [[ $i -eq 60 ]]; then
+              docker compose --env-file .env logs --no-color backend | tee -a "$REPORT_DIR/bootstrap-verify.txt" | tail -100
+              exit 1
+            fi
+          done
+
+          AFTER=$(docker compose --env-file .env exec -T postgres \
+            psql -U portal_superuser -d portal -tAc "SELECT COUNT(*) FROM users;" | tr -d '[:space:]')
+          SUPER_AFTER=$(docker compose --env-file .env exec -T postgres \
+            psql -U portal_superuser -d portal -tAc \
+            "SELECT COUNT(*) FROM users u JOIN user_roles ur ON ur.user_id=u.id JOIN roles r ON r.id=ur.role_id WHERE r.code='SUPER_ADMIN';" \
+            | tr -d '[:space:]')
+          {
+            echo "user_count_after_restart=$AFTER"
+            echo "super_admin_after=$SUPER_AFTER"
+          } | tee -a "$REPORT_DIR/bootstrap-verify.txt"
+          test "$AFTER" = "$BEFORE"
+          test "$SUPER_AFTER" = "$SUPER_BEFORE"
+
+          # Runner must log the skip path (users already present), not create another admin.
+          docker compose --env-file .env logs --no-color backend --since 5m \
+            | tee "$REPORT_DIR/bootstrap-restart-logs.txt" \
+            | grep -qiE 'Bootstrap admin skipped: .* user\(s\) already present' \
+            || { echo "FAIL: expected bootstrap skip log after restart" >&2; exit 1; }
+          if docker compose --env-file .env logs --no-color backend --since 5m \
+               | grep -qiE 'Bootstrap admin created'; then
+            echo "FAIL: bootstrap created a user on second start" >&2
+            exit 1
+          fi
+          echo "PASS: second bootstrap is a no-op (user count unchanged)" | tee -a "$REPORT_DIR/bootstrap-verify.txt"
+
+      - name: Auth still works after clearing bootstrap env (runtime)
+        env:
+          ADMIN_EMAIL: ci-admin@portal.local
+          ADMIN_PASSWORD: ${{ steps.secrets.outputs.BOOT_PW }}
+          BASE_URL: http://localhost:8080
+        run: |
+          docker compose --env-file .env stop backend
+          grep -v 'PORTAL_BOOTSTRAP_' .env > .env.noboot
+          echo "PORTAL_BOOTSTRAP_ENABLED=false" >> .env.noboot
+          mv .env.noboot .env
+          docker compose --env-file .env up -d backend
+          for i in $(seq 1 40); do
+            if curl -fsS http://localhost:8080/api/v1/auth/csrf >/dev/null 2>&1; then break; fi
+            sleep 3
+          done
+          ADMIN_EMAIL="$ADMIN_EMAIL" ADMIN_PASSWORD="$ADMIN_PASSWORD" BASE_URL="$BASE_URL" REPORT_DIR="$REPORT_DIR" \
+            ./infrastructure/scripts/live-api-verify.sh | tee -a "$REPORT_DIR/api-verification-post-bootstrap-clear.txt"
+
+      - name: Login rate-limit verification (final)
+        env:
+          BASE_URL: http://localhost:8080
+          REPORT_DIR: ${{ env.REPORT_DIR }}
+        run: |
+          chmod +x infrastructure/scripts/rate-limit-verify.sh
+          ./infrastructure/scripts/rate-limit-verify.sh
+
+      - name: Upload live evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-stack-evidence
+          path: artifacts/live-evidence/**
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Tear down
+        if: always()
+        run: docker compose --env-file .env down -v || true

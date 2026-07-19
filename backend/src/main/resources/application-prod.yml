@@ -1,0 +1,43 @@
+spring:
+  docker:
+    compose:
+      enabled: false
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        generate_statistics: false
+
+server:
+  servlet:
+    session:
+      cookie:
+        name: __Host-PORTAL_SESSION
+        secure: true
+        same-site: strict
+        path: /
+        http-only: true
+
+logging:
+  level:
+    root: INFO
+    com.company.portal: INFO
+    org.springframework: WARN
+    org.hibernate: WARN
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+portal:
+  session:
+    cookie:
+      name: __Host-PORTAL_SESSION
+      secure: true
+      host-prefix: true
+      same-site: STRICT
+      path: /
+  security:
+    hsts-max-age-seconds: 63072000

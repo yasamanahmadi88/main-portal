@@ -1,0 +1,263 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - "cursor/**"
+  pull_request:
+    branches:
+      - main
+  # Manual re-runs from the Actions tab.
+  workflow_dispatch:
+
+# ---------------------------------------------------------------
+#  Least-privilege token.  Individual jobs elevate as required.
+# ---------------------------------------------------------------
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Well-known version tags are used for readability.  Pinning to a
+  # 40-char commit SHA is strictly preferable and should be done via
+  # a Renovate/Dependabot policy — see docs/operations/ci-actions.md.
+  JAVA_VERSION: "25"
+  NODE_VERSION: "24.15.0"
+  # Force UTF-8 in the JVM/Maven output so log parsing stays sane.
+  MAVEN_OPTS: "-Xmx1500m -Dfile.encoding=UTF-8 -Djava.awt.headless=true"
+
+jobs:
+  # ================================================================
+  #  Backend — Spring Boot 4 (Java 25).  Runs unit + integration
+  #  tests via `./mvnw verify`.  Testcontainers spins up Postgres +
+  #  Redis inside the runner's Docker daemon, so we do NOT declare
+  #  `services:` here; that keeps the exact same test path used
+  #  locally.
+  # ================================================================
+  backend:
+    name: backend (java ${{ matrix.java }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: read
+    strategy:
+      fail-fast: true
+      matrix:
+        java: ["25"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Set up Java (Temurin ${{ matrix.java }})
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+
+      # Testcontainers needs a Docker daemon; the ubuntu-24.04 runner
+      # already has one, but this ensures the socket is reachable and
+      # exports the endpoint variables the library looks for.
+      - name: Verify Docker
+        run: |
+          docker info --format 'server-version={{.ServerVersion}}'
+          echo "DOCKER_HOST=$DOCKER_HOST"
+
+      - name: Cache Maven repository
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('backend/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Maven verify (compile + tests + package + SBOM)
+        working-directory: backend
+        run: |
+          chmod +x mvnw
+          ./mvnw -B -ntp -Dstyle.color=always \
+                 -DskipITs=false \
+                 verify
+
+      - name: Publish Surefire test report
+        if: always()
+        uses: mikepenz/action-junit-report@v5
+        with:
+          check_name: "backend / junit"
+          report_paths: |
+            backend/target/surefire-reports/*.xml
+            backend/target/failsafe-reports/*.xml
+          require_tests: false
+          annotate_only: true
+          detailed_summary: true
+
+      - name: Upload backend artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-artifacts
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            backend/target/*.jar
+            backend/target/bom.json
+            backend/target/site/jacoco/**
+            backend/target/surefire-reports/**
+            backend/target/failsafe-reports/**
+
+  # ================================================================
+  #  Frontend — Angular 22 (Node 24).
+  # ================================================================
+  frontend:
+    name: frontend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      checks: write
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: npm ci
+        run: npm ci --no-audit --no-fund
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests (Vitest)
+        run: npm test
+
+      - name: Production build
+        run: npm run build
+
+      - name: Upload frontend build
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          if-no-files-found: warn
+          retention-days: 14
+          path: frontend/dist/**
+
+  # ================================================================
+  #  OpenAPI — lint contracts/openapi/portal-v1.yaml.  Spectral is
+  #  the community standard; we invoke it via npx so we don't have
+  #  to add another package.json.
+  # ================================================================
+  openapi:
+    name: openapi lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install @stoplight/spectral-cli
+        run: npm install --global --no-audit --no-fund @stoplight/spectral-cli@6.14.2
+
+      - name: Spectral lint
+        run: |
+          test -f contracts/openapi/portal-v1.yaml || {
+            echo "::error::contracts/openapi/portal-v1.yaml is missing"; exit 1; }
+          spectral lint \
+            --fail-severity=error \
+            --format=stylish \
+            --ruleset contracts/openapi/.spectral.yaml \
+            contracts/openapi/portal-v1.yaml
+
+      - name: OpenAPI structure sanity check
+        run: |
+          python3 - <<'PY'
+          import sys, yaml, pathlib
+          p = pathlib.Path("contracts/openapi/portal-v1.yaml")
+          doc = yaml.safe_load(p.read_text())
+          assert doc.get("openapi", "").startswith("3."), "openapi version must be 3.x"
+          assert doc.get("info", {}).get("version"), "info.version is required"
+          paths = doc.get("paths", {})
+          assert paths, "at least one path is required"
+          for path, ops in paths.items():
+              assert path.startswith("/"), f"path {path!r} must start with '/'"
+              for method, op in (ops or {}).items():
+                  if method in ("parameters", "$ref"):
+                      continue
+                  responses = (op or {}).get("responses", {})
+                  assert responses, f"{method.upper()} {path} has no responses"
+          print(f"OK: {len(paths)} paths, {sum(len(v or {}) for v in paths.values())} operations")
+          PY
+
+  # ================================================================
+  #  Security — secret scan (Gitleaks) + dependency vulns (OSV).
+  #  Uploads SARIF to the code-scanning tab.
+  # ================================================================
+  security:
+    name: security scans
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: infrastructure/security/gitleaks.toml
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "true"
+          GITLEAKS_ENABLE_SUMMARY: "true"
+
+      - name: OSV Scanner (dependencies)
+        uses: google/osv-scanner-action/osv-scanner-action@v2.0.1
+        with:
+          scan-args: |-
+            -r
+            --skip-git
+            --format=sarif
+            --output=osv.sarif
+            ./
+        continue-on-error: true
+
+      - name: Upload OSV SARIF
+        if: always() && hashFiles('osv.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: osv.sarif
+          category: osv-scanner
+        continue-on-error: true

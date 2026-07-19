@@ -1,0 +1,9 @@
+---
+description: Angular frontend rules
+globs:
+  - frontend/**
+---
+- Standalone components, signals, strict templates, typed forms.
+- No auth tokens in browser storage; session cookie + CSRF only.
+- Runtime i18n via ngx-translate; CSS logical properties for RTL/LTR.
+- Feature-oriented folders under `src/app/features`.

@@ -1,0 +1,53 @@
+# Tempo — single-binary trace store.
+#
+# This local config uses the built-in `local` backend.  Swap to `s3`/`gcs`
+# in production, plus a Memcached instance for the bloom filter cache.
+
+stream_over_http_enabled: true
+
+server:
+  http_listen_port: 3200
+  grpc_listen_port: 9095
+  log_level: info
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
+ingester:
+  max_block_duration: 5m
+  trace_idle_period: 10s
+
+compactor:
+  compaction:
+    block_retention: 168h                 # 7 days
+    compacted_block_retention: 1h
+
+storage:
+  trace:
+    backend: local
+    wal:
+      path: /var/tempo/wal
+    local:
+      path: /var/tempo/blocks
+
+querier:
+  max_concurrent_queries: 20
+
+query_frontend:
+  search:
+    max_duration: 168h
+  trace_by_id:
+    duration_slo: 5s
+
+# Service graph / span metrics generators are disabled to keep the stack
+# self-contained.  Enable them by adding `metrics_generator:` here and
+# starting Prometheus with `--web.enable-remote-write-receiver`.
+
+usage_report:
+  reporting_enabled: false

@@ -1,0 +1,14 @@
+.users-table__card { padding: 0; overflow: hidden; }
+table { inline-size: 100%; }
+.role-code {
+  font-family: var(--app-font-family-mono);
+  font-weight: 600;
+  color: var(--app-color-text);
+}
+.role-code:hover { color: var(--app-color-primary); text-decoration: none; }
+.role-description {
+  max-inline-size: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

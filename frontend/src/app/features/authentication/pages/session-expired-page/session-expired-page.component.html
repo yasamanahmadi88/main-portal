@@ -1,0 +1,16 @@
+<section class="auth-card">
+  <header>
+    <mat-icon aria-hidden="true" class="auth-card__icon">timer</mat-icon>
+    <h1>{{ 'authentication.sessionExpired.title' | translate }}</h1>
+    <p>{{ 'authentication.sessionExpired.description' | translate }}</p>
+  </header>
+  <a
+    mat-flat-button
+    color="primary"
+    class="auth-card__submit"
+    [routerLink]="'/auth/login'"
+    [queryParams]="returnUrl ? { returnUrl } : null"
+  >
+    {{ 'authentication.sessionExpired.action' | translate }}
+  </a>
+</section>

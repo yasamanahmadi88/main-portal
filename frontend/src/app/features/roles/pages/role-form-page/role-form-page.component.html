@@ -1,0 +1,42 @@
+<app-page-header [title]="editing() ? 'common.actions.edit' : 'roles.actions.create'">
+  <div actions>
+    <a mat-stroked-button routerLink="/roles">
+      <mat-icon aria-hidden="true">arrow_back</mat-icon>
+      <span>{{ 'common.actions.back' | translate }}</span>
+    </a>
+  </div>
+</app-page-header>
+
+<form class="app-card role-form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+  <mat-form-field appearance="outline">
+    <mat-label>{{ 'roles.form.codeLabel' | translate }}</mat-label>
+    <input matInput type="text" formControlName="code" />
+    <mat-hint>{{ 'roles.form.codeHint' | translate }}</mat-hint>
+    @if (form.controls.code.hasError('required')) {
+      <mat-error>{{ 'validation.required' | translate }}</mat-error>
+    }
+    @if (form.controls.code.hasError('pattern')) {
+      <mat-error>{{ 'validation.pattern' | translate }}</mat-error>
+    }
+    @if (fieldErrors()['code']) {
+      <mat-error>{{ fieldErrors()['code'] }}</mat-error>
+    }
+  </mat-form-field>
+  <mat-form-field appearance="outline">
+    <mat-label>{{ 'roles.form.nameLabel' | translate }}</mat-label>
+    <input matInput type="text" formControlName="name" />
+    @if (form.controls.name.hasError('required')) {
+      <mat-error>{{ 'validation.required' | translate }}</mat-error>
+    }
+  </mat-form-field>
+  <mat-form-field appearance="outline">
+    <mat-label>{{ 'roles.form.descriptionLabel' | translate }}</mat-label>
+    <textarea matInput rows="3" formControlName="description"></textarea>
+  </mat-form-field>
+  <div class="role-form__actions">
+    <a mat-stroked-button routerLink="/roles">{{ 'common.actions.cancel' | translate }}</a>
+    <button mat-flat-button color="primary" type="submit" [disabled]="submitting() || form.invalid">
+      {{ (submitting() ? 'common.actions.saving' : 'common.actions.save') | translate }}
+    </button>
+  </div>
+</form>

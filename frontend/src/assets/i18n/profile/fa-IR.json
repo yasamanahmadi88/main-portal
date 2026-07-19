@@ -1,0 +1,53 @@
+{
+  "profile": {
+    "title": "نمایه من",
+    "subtitle": "اطلاعات، اعتبارنامه‌ها و دستگاه‌های خود را به‌روز کنید.",
+    "tabs": {
+      "overview": "نمای کلی",
+      "security": "امنیت و احراز چندعاملی",
+      "sessions": "نشست‌های فعال"
+    },
+    "overview": {
+      "displayNameLabel": "نام نمایشی",
+      "emailLabel": "نشانی ایمیل",
+      "usernameLabel": "نام کاربری",
+      "languageLabel": "زبان مورد نظر",
+      "themeLabel": "پوسته‌ی مورد نظر",
+      "saveSuccess": "نمایه با موفقیت به‌روزرسانی شد."
+    },
+    "security": {
+      "changePasswordTitle": "تغییر گذرواژه",
+      "currentPasswordLabel": "گذرواژه‌ی فعلی",
+      "newPasswordLabel": "گذرواژه‌ی جدید",
+      "confirmPasswordLabel": "تأیید گذرواژه‌ی جدید",
+      "changePasswordAction": "به‌روزرسانی گذرواژه",
+      "changePasswordSuccess": "گذرواژه با موفقیت به‌روزرسانی شد.",
+      "mfaTitle": "احراز هویت چندعاملی",
+      "mfaEnabledDescription": "احراز چندعاملی فعال است. دستگاه‌های زیر برای تأیید مجاز هستند.",
+      "mfaDisabledDescription": "برای حفاظت قوی‌تر حساب، یک برنامه احرازکننده اضافه کنید.",
+      "enrollTotp": "افزودن برنامه احرازکننده",
+      "removeFactor": "حذف عامل",
+      "recoveryCodesTitle": "کدهای بازیابی",
+      "recoveryCodesDescription": "این کدها را در محلی امن ذخیره کنید. هر کد فقط یک بار قابل استفاده است.",
+      "regenerateRecoveryCodes": "بازتولید کدهای بازیابی",
+      "regenerateSuccess": "کدهای بازیابی جدید تولید شد.",
+      "confirmDeleteFactor": "این عامل را حذف می‌کنید؟",
+      "confirmDeleteFactorDetail": "با حذف این عامل باید قبل از ورود مجدد، دوباره ثبت‌نام کنید.",
+      "totpSetupInstructions": "بارکد را با برنامه احرازکننده اسکن کنید و کد شش‌رقمی نمایش داده‌شده را وارد نمایید.",
+      "secretLabel": "کلید محرمانه",
+      "codeLabel": "کد تأیید",
+      "confirmEnrollment": "تأیید ثبت‌نام",
+      "enrollmentSuccess": "برنامه احرازکننده فعال شد. کدهای بازیابی زیر را ذخیره کنید — دوباره نمایش داده نمی‌شوند."
+    },
+    "sessions": {
+      "title": "نشست‌های فعال",
+      "description": "دستگاه‌هایی که نشست فعال با حساب شما دارند.",
+      "current": "این دستگاه",
+      "revoke": "ابطال",
+      "revokeAll": "خروج از سایر دستگاه‌ها",
+      "revokeSuccess": "نشست ابطال شد.",
+      "revokeAllSuccess": "از {{count}} نشست دیگر خارج شدید.",
+      "empty": "به‌جز نشست کنونی، نشست فعال دیگری ندارید."
+    }
+  }
+}

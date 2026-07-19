@@ -1,0 +1,23 @@
+{
+  "settings": {
+    "title": "تنظیمات",
+    "subtitle": "ترجیحات و سیاست‌های سراسری پرتال.",
+    "fields": {
+      "defaultLanguage": "زبان پیش‌فرض",
+      "defaultTheme": "پوسته‌ی پیش‌فرض",
+      "sessionTimeoutMinutes": "زمان انقضای نشست (دقیقه)",
+      "mfaRequiredForAdmins": "الزام احراز چندعاملی برای مدیران",
+      "auditRetentionDays": "مدت نگهداری حسابرسی (روز)",
+      "loginRateLimitPerMinute": "محدودیت نرخ ورود (در دقیقه)"
+    },
+    "hints": {
+      "sessionTimeout": "بین ۵ تا ۱۴۴۰ دقیقه.",
+      "auditRetention": "حداقل ۳۰ روز.",
+      "loginRate": "به ازای هر نشانی IP."
+    },
+    "actions": {
+      "save": "ذخیره تنظیمات",
+      "saved": "تنظیمات ذخیره شد."
+    }
+  }
+}

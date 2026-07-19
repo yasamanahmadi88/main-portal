@@ -1,0 +1,44 @@
+@if (loading()) {
+  <app-page-header [title]="'audit.detail.title'"></app-page-header>
+  <div class="app-card"><app-skeleton height="18px" /></div>
+} @else if (error() || !event()) {
+  <app-error-state (retry)="eventId() && load(eventId()!)" />
+} @else {
+  <app-page-header [title]="'audit.detail.title'">
+    <div actions>
+      <a mat-stroked-button routerLink="/audit">
+        <mat-icon aria-hidden="true">arrow_back</mat-icon>
+        <span>{{ 'common.actions.back' | translate }}</span>
+      </a>
+    </div>
+  </app-page-header>
+  <div class="app-card audit-detail">
+    <dl>
+      <div><dt>{{ 'audit.columns.when' | translate }}</dt><dd>{{ event()!.occurredAt | date: 'full' }}</dd></div>
+      <div><dt>{{ 'audit.columns.actor' | translate }}</dt><dd>{{ event()!.actor.username || event()!.actor.type }}</dd></div>
+      <div><dt>{{ 'audit.columns.action' | translate }}</dt><dd><code>{{ event()!.action }}</code></dd></div>
+      <div><dt>{{ 'audit.columns.resource' | translate }}</dt><dd>{{ event()!.resource.type }}<br />{{ event()!.resource.displayName }}</dd></div>
+      <div>
+        <dt>{{ 'audit.columns.outcome' | translate }}</dt>
+        <dd>
+          <app-status-badge
+            [tone]="event()!.outcome === 'SUCCESS' ? 'success' : 'danger'"
+            [label]="'audit.outcome.' + event()!.outcome"
+          />
+        </dd>
+      </div>
+      <div><dt>{{ 'audit.columns.ip' | translate }}</dt><dd>{{ event()!.ipAddress || '—' }}</dd></div>
+    </dl>
+
+    @if (event()!.metadata) {
+      <h3>{{ 'audit.detail.metadata' | translate }}</h3>
+      <pre class="audit-detail__pre">{{ event()!.metadata | json }}</pre>
+    }
+
+    <h3>{{ 'audit.detail.hashChain' | translate }}</h3>
+    <div class="audit-detail__hashes">
+      <div><span>{{ 'audit.detail.previousHash' | translate }}</span><code>{{ event()!.previousHash || '—' }}</code></div>
+      <div><span>{{ 'audit.detail.hash' | translate }}</span><code>{{ event()!.hash }}</code></div>
+    </div>
+  </div>
+}

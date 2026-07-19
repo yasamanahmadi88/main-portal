@@ -1,0 +1,75 @@
+<section class="auth-card">
+  <header>
+    <h1>{{ 'authentication.login.title' | translate }}</h1>
+    <p>{{ 'authentication.login.subtitle' | translate }}</p>
+  </header>
+
+  @if (hasError()) {
+    <div class="auth-alert" role="alert">
+      <mat-icon aria-hidden="true">warning</mat-icon>
+      <div>
+        @if (errorKey()) {
+          <div>{{ errorKey()! | translate }}</div>
+        }
+        @if (errorDetail()) {
+          <div class="auth-alert__detail">{{ errorDetail() }}</div>
+        }
+      </div>
+    </div>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'authentication.login.usernameLabel' | translate }}</mat-label>
+      <input
+        matInput
+        type="text"
+        formControlName="username"
+        autocomplete="username"
+        autocapitalize="none"
+        spellcheck="false"
+        [attr.aria-invalid]="form.controls.username.invalid && form.controls.username.touched"
+      />
+      @if (form.controls.username.touched && form.controls.username.hasError('required')) {
+        <mat-error>{{ 'validation.required' | translate }}</mat-error>
+      }
+    </mat-form-field>
+
+    <app-password-input
+      formControlName="password"
+      [label]="'authentication.login.passwordLabel'"
+      autocomplete="current-password"
+      name="password"
+    >
+      @if (form.controls.password.touched && form.controls.password.hasError('required')) {
+        <mat-error>{{ 'validation.required' | translate }}</mat-error>
+      }
+    </app-password-input>
+
+    <div class="auth-card__row auth-card__row--end">
+      <a routerLink="/auth/forgot-password" class="auth-card__link">
+        {{ 'authentication.login.forgot' | translate }}
+      </a>
+    </div>
+
+    <button
+      mat-flat-button
+      color="primary"
+      type="submit"
+      class="auth-card__submit"
+      [disabled]="submitting() || form.invalid"
+    >
+      @if (submitting()) {
+        <mat-progress-spinner mode="indeterminate" diameter="20" />
+        <span>{{ 'common.actions.signingIn' | translate }}</span>
+      } @else {
+        <span>{{ 'authentication.login.submit' | translate }}</span>
+      }
+    </button>
+  </form>
+
+  <footer class="auth-card__footer">
+    <span>{{ 'authentication.login.noAccount' | translate }}</span>
+    <span class="auth-card__contact">{{ 'authentication.login.contactAdmin' | translate }}</span>
+  </footer>
+</section>

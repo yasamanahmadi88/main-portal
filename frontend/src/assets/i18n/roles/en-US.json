@@ -1,0 +1,33 @@
+{
+  "roles": {
+    "title": "Roles",
+    "subtitle": "Define what groups of users can do inside the portal.",
+    "actions": {
+      "create": "New role"
+    },
+    "columns": {
+      "code": "Code",
+      "name": "Name",
+      "description": "Description",
+      "system": "System",
+      "permissions": "Permissions"
+    },
+    "form": {
+      "codeLabel": "Code",
+      "codeHint": "Uppercase letters, digits, and underscores.",
+      "nameLabel": "Name",
+      "descriptionLabel": "Description",
+      "createSuccess": "Role created.",
+      "updateSuccess": "Role updated.",
+      "deleteSuccess": "Role deleted."
+    },
+    "detail": {
+      "permissions": "Assigned permissions",
+      "systemRoleLocked": "System roles cannot be modified."
+    },
+    "confirm": {
+      "delete": "Delete this role? Users assigned to it will lose the associated permissions."
+    },
+    "empty": "No roles defined yet — create your first role to get started."
+  }
+}

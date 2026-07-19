@@ -1,0 +1,82 @@
+<app-page-header [title]="'audit.title'" [subtitle]="'audit.subtitle'">
+  <div actions>
+    <button mat-stroked-button type="button" (click)="verifyIntegrity()" [disabled]="verifying()">
+      <mat-icon aria-hidden="true">verified</mat-icon>
+      <span>{{ 'audit.actions.verifyIntegrity' | translate }}</span>
+    </button>
+  </div>
+</app-page-header>
+
+<section class="filters app-card app-card--muted">
+  <mat-form-field appearance="outline">
+    <mat-label>{{ 'audit.filters.action' | translate }}</mat-label>
+    <input matInput type="text" (input)="action.set($any($event.target).value); pageIndex.set(0)" />
+  </mat-form-field>
+  <mat-form-field appearance="outline">
+    <mat-label>{{ 'audit.filters.outcome' | translate }}</mat-label>
+    <mat-select [value]="outcome()" (selectionChange)="outcome.set($any($event.value)); pageIndex.set(0)">
+      <mat-option value="">{{ 'common.labels.notAvailable' | translate }}</mat-option>
+      <mat-option value="SUCCESS">{{ 'audit.outcome.SUCCESS' | translate }}</mat-option>
+      <mat-option value="FAILURE">{{ 'audit.outcome.FAILURE' | translate }}</mat-option>
+    </mat-select>
+  </mat-form-field>
+</section>
+
+@if (state().loading && !state().page) {
+  <div class="app-card"><app-skeleton height="18px" /></div>
+} @else if (state().error) {
+  <app-error-state (retry)="pageIndex.set(pageIndex())" />
+} @else if (state().page && state().page!.content.length === 0) {
+  <app-empty-state icon="history" [title]="'audit.empty'" />
+} @else if (state().page) {
+  <div class="app-card">
+    <div class="app-scroll-shadow">
+      <table mat-table [dataSource]="state().page!.content">
+        <ng-container matColumnDef="when">
+          <th mat-header-cell *matHeaderCellDef>{{ 'audit.columns.when' | translate }}</th>
+          <td mat-cell *matCellDef="let event">
+            <a [routerLink]="['/audit', event.id]">{{ event.occurredAt | date: 'medium' }}</a>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="actor">
+          <th mat-header-cell *matHeaderCellDef>{{ 'audit.columns.actor' | translate }}</th>
+          <td mat-cell *matCellDef="let event">
+            {{ event.actor.username || event.actor.type }}
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="action">
+          <th mat-header-cell *matHeaderCellDef>{{ 'audit.columns.action' | translate }}</th>
+          <td mat-cell *matCellDef="let event"><code>{{ event.action }}</code></td>
+        </ng-container>
+        <ng-container matColumnDef="resource">
+          <th mat-header-cell *matHeaderCellDef>{{ 'audit.columns.resource' | translate }}</th>
+          <td mat-cell *matCellDef="let event">
+            {{ event.resource.displayName || event.resource.type }}
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="outcome">
+          <th mat-header-cell *matHeaderCellDef>{{ 'audit.columns.outcome' | translate }}</th>
+          <td mat-cell *matCellDef="let event">
+            <app-status-badge
+              [tone]="event.outcome === 'SUCCESS' ? 'success' : 'danger'"
+              [label]="'audit.outcome.' + event.outcome"
+            />
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="ip">
+          <th mat-header-cell *matHeaderCellDef>{{ 'audit.columns.ip' | translate }}</th>
+          <td mat-cell *matCellDef="let event">{{ event.ipAddress || '—' }}</td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="columns"></tr>
+        <tr mat-row *matRowDef="let row; columns: columns"></tr>
+      </table>
+    </div>
+    <mat-paginator
+      [length]="state().page!.totalElements"
+      [pageIndex]="state().page!.page"
+      [pageSize]="state().page!.size"
+      [pageSizeOptions]="[10, 20, 50, 100]"
+      (page)="onPage($event)"
+    />
+  </div>
+}

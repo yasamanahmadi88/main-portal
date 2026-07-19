@@ -1,0 +1,35 @@
+{
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "A snapshot of your portal today.",
+    "cards": {
+      "activeUsers": {
+        "title": "Active users",
+        "description": "Users active in the past 24 hours."
+      },
+      "activeSessions": {
+        "title": "Active sessions",
+        "description": "Concurrent authenticated sessions."
+      },
+      "unacknowledgedEvents": {
+        "title": "Unacknowledged security events",
+        "description": "Events waiting for an operator to review."
+      },
+      "criticalEvents": {
+        "title": "Critical events",
+        "description": "Severity CRITICAL events in the last 24 hours."
+      },
+      "auditEventsToday": {
+        "title": "Audit events today",
+        "description": "Recorded actions since midnight."
+      }
+    },
+    "quickActions": {
+      "title": "Quick actions",
+      "manageUsers": "Manage users",
+      "reviewSecurityEvents": "Review security events",
+      "openAudit": "Open audit log"
+    },
+    "empty": "Nothing to show yet — check back once traffic starts flowing."
+  }
+}

@@ -1,0 +1,266 @@
+# Enterprise Portal — local development stack.
+#
+# Production deployments MUST NOT publish postgres/redis ports; instead deploy
+# these services on a private network and access them via internal DNS.
+# Local `docker compose up` publishes them on 127.0.0.1 only so developers can
+# use `psql`/`redis-cli` from the host while still refusing external traffic.
+#
+# Secrets are never embedded. Every credential is read from the environment
+# (`.env` file — see `.env.example`) via `${VAR:?}` substitution so that
+# `docker compose config` fails fast when required variables are missing.
+
+name: portal
+
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+    internal: false  # backend network needs egress for mail/OTel exporters
+  data:
+    driver: bridge
+    internal: true   # postgres/redis reachable only from other data-network peers
+
+volumes:
+  postgres-data:
+  redis-data:
+  mailpit-data:
+  backend-tmp:
+  frontend-cache:
+
+x-restart-policy: &restart-policy
+  restart: unless-stopped
+
+x-logging: &default-logging
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "5"
+
+services:
+  postgres:
+    image: postgres:16.9-alpine
+    <<: [*restart-policy, *default-logging]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_SUPERUSER:-portal_superuser}
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:?POSTGRES_SUPERUSER_PASSWORD is required}
+      # Passed through to init scripts (see infrastructure/database/init).
+      PORTAL_APP_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      PORTAL_APP_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      PORTAL_MIGRATION_USER: ${POSTGRES_MIGRATION_USER:?POSTGRES_MIGRATION_USER is required}
+      PORTAL_MIGRATION_PASSWORD: ${POSTGRES_MIGRATION_PASSWORD:?POSTGRES_MIGRATION_PASSWORD is required}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infrastructure/database/init:/docker-entrypoint-initdb.d:ro
+    # Local-only publication. Bind to loopback so nothing on the LAN can reach it.
+    # In production DELETE this `ports:` block entirely and rely on the internal
+    # `data` network only.
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    networks:
+      - data
+    healthcheck:
+      # Use the superuser created by the official image (POSTGRES_USER above).
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+
+  redis:
+    image: redis:7.4.2-alpine
+    <<: [*restart-policy, *default-logging]
+    environment:
+      # Exposed for the healthcheck shell; also interpolated into --requirepass.
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    command: >
+      redis-server
+      --appendonly yes
+      --save 60 1000
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    volumes:
+      - redis-data:/data
+    # Local-only publication (see postgres above).
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    networks:
+      - data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning PING | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+
+  mailpit:
+    image: axllent/mailpit:v1.21.5
+    <<: [*restart-policy, *default-logging]
+    environment:
+      MP_MAX_MESSAGES: "5000"
+      MP_SMTP_AUTH_ACCEPT_ANY: "1"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "1"
+      MP_DATABASE: /data/mailpit.db
+    volumes:
+      - mailpit-data:/data
+    ports:
+      - "127.0.0.1:${MAIL_SMTP_PORT:-1025}:1025"  # SMTP submission
+      - "127.0.0.1:${MAIL_UI_PORT:-8025}:8025"    # Mailpit web UI
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8025/readyz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+
+  backend:
+    image: ${PORTAL_BACKEND_IMAGE:-portal-backend:local}
+    build:
+      context: .
+      dockerfile: infrastructure/docker/backend/Dockerfile
+      args:
+        MAVEN_OPTS: "-Xmx1g"
+    <<: [*restart-policy, *default-logging]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+    environment:
+      # Default to local for HTTP compose stacks (Secure cookies break plain HTTP).
+      # Override to prod behind TLS-terminating ingress.
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-local}
+      SERVER_PORT: "8080"
+      MANAGEMENT_SERVER_PORT: "8081"
+      # Datasource (uses migration user by default; the app runs migrations
+      # at boot and immediately drops back to the runtime user for its pool).
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      DB_USERNAME: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_FLYWAY_USER: ${POSTGRES_MIGRATION_USER}
+      SPRING_FLYWAY_PASSWORD: ${POSTGRES_MIGRATION_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      MAIL_HOST: mailpit
+      MAIL_PORT: "1025"
+      MAIL_FROM: ${MAIL_FROM:-noreply@portal.local}
+      PORTAL_PUBLIC_BASE_URL: ${PORTAL_PUBLIC_BASE_URL:-http://localhost:8080}
+      PORTAL_CORS_ALLOWED_ORIGINS: ${PORTAL_CORS_ALLOWED_ORIGINS:-}
+      SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-PORTALSESSION}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-true}
+      SESSION_COOKIE_SAME_SITE: ${SESSION_COOKIE_SAME_SITE:-Lax}
+      SESSION_IDLE_TIMEOUT_MINUTES: ${SESSION_IDLE_TIMEOUT_MINUTES:-30}
+      SESSION_ABSOLUTE_TIMEOUT_HOURS: ${SESSION_ABSOLUTE_TIMEOUT_HOURS:-12}
+      CSRF_COOKIE_NAME: ${CSRF_COOKIE_NAME:-XSRF-TOKEN}
+      CSRF_HEADER_NAME: ${CSRF_HEADER_NAME:-X-XSRF-TOKEN}
+      MFA_ENCRYPTION_KEY_ID: ${MFA_ENCRYPTION_KEY_ID:?MFA_ENCRYPTION_KEY_ID is required}
+      MFA_ENCRYPTION_KEY_BASE64: ${MFA_ENCRYPTION_KEY_BASE64:?MFA_ENCRYPTION_KEY_BASE64 is required}
+      PORTAL_MFA_KEY_LOCAL: ${MFA_ENCRYPTION_KEY_BASE64}
+      # Observability (optional — collector is defined in compose.observability.yaml)
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-portal-backend}
+      OTEL_RESOURCE_ATTRIBUTES: service.namespace=portal,deployment.environment=${PORTAL_ENV:-local}
+      # Default off for compose.yaml alone; enable via compose.observability.yaml
+      # or TELEMETRY_ENABLED=true when the OTel collector is present.
+      TELEMETRY_ENABLED: ${TELEMETRY_ENABLED:-false}
+      MANAGEMENT_OPENTELEMETRY_ENABLED: ${TELEMETRY_ENABLED:-false}
+      OTEL_SDK_DISABLED: ${OTEL_SDK_DISABLED:-true}
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:-health,info,prometheus,metrics}
+      MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: ${MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS:-when_authorized}
+      # Bootstrap admin — Spring binds portal.bootstrap.* from PORTAL_BOOTSTRAP_*.
+      PORTAL_BOOTSTRAP_ENABLED: ${PORTAL_BOOTSTRAP_ENABLED:-false}
+      PORTAL_BOOTSTRAP_ADMIN_EMAIL: ${PORTAL_BOOTSTRAP_ADMIN_EMAIL:-}
+      PORTAL_BOOTSTRAP_ADMIN_PASSWORD: ${PORTAL_BOOTSTRAP_ADMIN_PASSWORD:-}
+      PORTAL_BOOTSTRAP_ADMIN_DISPLAY_NAME: ${PORTAL_BOOTSTRAP_ADMIN_DISPLAY_NAME:-Portal Administrator}
+      JAVA_TOOL_OPTIONS: >-
+        -XX:MaxRAMPercentage=75
+        -XX:+ExitOnOutOfMemoryError
+        -Djava.security.egd=file:/dev/./urandom
+    networks:
+      - backend
+      - data
+    # Actuator/Prometheus port is only exposed inside the compose network.
+    expose:
+      - "8080"
+      - "8081"
+    volumes:
+      - backend-tmp:/tmp
+    read_only: true
+    tmpfs:
+      - /run:size=8m
+    healthcheck:
+      # Prefer liveness during cold start; readiness can lag while Flyway runs.
+      test: ["CMD-SHELL", "wget -qO- --header 'Accept: application/json' http://127.0.0.1:8081/actuator/health | grep -q '\"status\":\"UP\"' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 120s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+
+  frontend:
+    image: ${PORTAL_FRONTEND_IMAGE:-portal-frontend:local}
+    build:
+      context: .
+      dockerfile: infrastructure/docker/frontend/Dockerfile
+    <<: [*restart-policy, *default-logging]
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - frontend
+      - backend
+    expose:
+      - "8080"
+    environment:
+      NGINX_BACKEND_UPSTREAM: backend:8080
+      NGINX_ACTUATOR_UPSTREAM: backend:8081
+    volumes:
+      - frontend-cache:/var/cache/nginx
+      # runtime read-only rootfs; nginx pid + client/proxy temp dirs need tmpfs
+    tmpfs:
+      - /run:size=8m
+      - /var/run:size=8m
+      - /tmp:size=64m
+    read_only: true
+    # Public entrypoint. Front the container with a TLS-terminating proxy or
+    # a cloud load balancer in production; the container itself only speaks
+    # cleartext HTTP on 8080.
+    ports:
+      - "${PORTAL_HTTP_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8080/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - NET_BIND_SERVICE

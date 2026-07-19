@@ -1,0 +1,12 @@
+extends: ["spectral:oas"]
+rules:
+  # Enterprise portal uses cookie + CSRF; operation security is documented via
+  # cookieAuth/csrfHeader schemes. Soften noisy defaults that fight BFF style.
+  oas3-unused-component: warn
+  info-contact: warn
+  info-description: warn
+  operation-tag-defined: warn
+  operation-operationId: error
+  operation-description: warn
+  path-params: error
+  typed-enum: error

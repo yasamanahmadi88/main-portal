@@ -1,0 +1,179 @@
+# Observability overlay for the enterprise portal.
+#
+# Usage:
+#   docker compose -f compose.yaml -f compose.observability.yaml up -d
+#
+# Stack:
+#   - OpenTelemetry Collector — receives OTLP traces/metrics/logs from the
+#     backend and fans them out to Prometheus, Tempo and Loki.
+#   - Prometheus — scrapes the collector + the backend's `/actuator/prometheus`.
+#   - Loki — log storage.
+#   - Tempo — trace storage.
+#   - Grafana — dashboards backed by Prometheus / Loki / Tempo datasources.
+#
+# All services are bound to loopback only when publishing ports. Nothing is
+# exposed beyond the compose network by default.
+
+name: portal
+
+networks:
+  observability:
+    driver: bridge
+
+volumes:
+  prometheus-data:
+  loki-data:
+  tempo-data:
+  grafana-data:
+
+x-restart-policy: &restart-policy
+  restart: unless-stopped
+
+x-logging: &default-logging
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "5"
+
+services:
+  # When this overlay is active, turn OTel export back on for the backend.
+  backend:
+    environment:
+      TELEMETRY_ENABLED: "true"
+      MANAGEMENT_OPENTELEMETRY_ENABLED: "true"
+      OTEL_SDK_DISABLED: "false"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.113.0
+    <<: [*restart-policy, *default-logging]
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./infrastructure/observability/otel-collector-config.yaml:/etc/otelcol/config.yaml:ro
+    networks:
+      - backend
+      - observability
+    expose:
+      - "4317"   # OTLP gRPC
+      - "4318"   # OTLP HTTP
+      - "8888"   # collector's own metrics
+      - "8889"   # prometheus exporter
+    healthcheck:
+      test: ["CMD", "/otelcol-contrib", "--help"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    <<: [*restart-policy, *default-logging]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      - --web.enable-lifecycle
+      - --web.listen-address=:9090
+    volumes:
+      - ./infrastructure/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - backend
+      - observability
+    expose:
+      - "9090"
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:9090/-/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+
+  loki:
+    image: grafana/loki:3.3.2
+    <<: [*restart-policy, *default-logging]
+    command: ["-config.file=/etc/loki/loki-config.yaml"]
+    volumes:
+      - ./infrastructure/observability/loki-config.yaml:/etc/loki/loki-config.yaml:ro
+      - loki-data:/loki
+    networks:
+      - observability
+    expose:
+      - "3100"
+    ports:
+      - "127.0.0.1:${LOKI_PORT:-3100}:3100"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:3100/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+
+  tempo:
+    image: grafana/tempo:2.6.1
+    <<: [*restart-policy, *default-logging]
+    command: ["-config.file=/etc/tempo/tempo-config.yaml"]
+    volumes:
+      - ./infrastructure/observability/tempo-config.yaml:/etc/tempo/tempo-config.yaml:ro
+      - tempo-data:/var/tempo
+    networks:
+      - observability
+    expose:
+      - "3200"   # tempo HTTP query
+      - "4317"   # OTLP gRPC (used by collector)
+      - "4318"   # OTLP HTTP
+    ports:
+      - "127.0.0.1:${TEMPO_PORT:-3200}:3200"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:3200/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+
+  grafana:
+    image: grafana/grafana:11.3.1
+    <<: [*restart-policy, *default-logging]
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+      tempo:
+        condition: service_healthy
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD is required}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_INSTALL_PLUGINS: ""
+      GF_SERVER_HTTP_PORT: "3000"
+      GF_PATHS_PROVISIONING: /etc/grafana/provisioning
+    volumes:
+      - ./infrastructure/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    networks:
+      - observability
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health | grep -q '\"database\": \"ok\"'"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true

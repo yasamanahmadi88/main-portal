@@ -1,0 +1,54 @@
+{
+  "users": {
+    "title": "کاربران",
+    "subtitle": "کاربران دارای دسترسی به پرتال را مدیریت کنید.",
+    "actions": {
+      "create": "کاربر جدید",
+      "assignRoles": "تخصیص نقش",
+      "resetPassword": "ارسال بازیابی گذرواژه",
+      "resetMfa": "بازنشانی احراز چندعاملی",
+      "revokeSessions": "ابطال همه‌ی نشست‌ها",
+      "activate": "فعال‌سازی",
+      "deactivate": "غیرفعال‌سازی",
+      "unlock": "بازگشایی"
+    },
+    "filters": {
+      "search": "جستجو بر اساس نام، ایمیل یا نام کاربری",
+      "status": "وضعیت",
+      "role": "نقش"
+    },
+    "columns": {
+      "user": "کاربر",
+      "email": "ایمیل",
+      "status": "وضعیت",
+      "roles": "نقش‌ها",
+      "lastLogin": "آخرین ورود",
+      "actions": "عملیات"
+    },
+    "status": {
+      "ACTIVE": "فعال",
+      "INACTIVE": "غیرفعال",
+      "LOCKED": "قفل",
+      "PENDING": "در انتظار"
+    },
+    "form": {
+      "usernameLabel": "نام کاربری",
+      "emailLabel": "ایمیل",
+      "displayNameLabel": "نام نمایشی",
+      "rolesLabel": "نقش‌ها",
+      "sendInviteLabel": "ارسال ایمیل دعوت",
+      "createSuccess": "کاربر ایجاد شد.",
+      "updateSuccess": "کاربر به‌روزرسانی شد."
+    },
+    "detail": {
+      "roles": "نقش‌ها",
+      "permissions": "دسترسی‌های مؤثر",
+      "activity": "فعالیت‌های اخیر"
+    },
+    "empty": "کاربری مطابق با فیلترها یافت نشد.",
+    "confirm": {
+      "deactivate": "این کاربر غیرفعال شود؟ تا فعال‌سازی مجدد دسترسی نخواهد داشت.",
+      "revokeSessions": "همه‌ی نشست‌های این کاربر باطل شود؟"
+    }
+  }
+}

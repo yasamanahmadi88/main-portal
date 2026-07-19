@@ -1,0 +1,31 @@
+{
+  "securityEvents": {
+    "title": "رویدادهای امنیتی",
+    "subtitle": "نشانه‌هایی که ممکن است به سوءاستفاده، حمله یا خطای پیکربندی مربوط باشند.",
+    "filters": {
+      "severity": "شدت",
+      "acknowledged": "بررسی‌شده",
+      "from": "از",
+      "to": "تا"
+    },
+    "columns": {
+      "occurredAt": "زمان کشف",
+      "type": "نوع",
+      "severity": "شدت",
+      "user": "کاربر",
+      "ip": "IP",
+      "acknowledged": "بررسی‌شده"
+    },
+    "severity": {
+      "LOW": "کم",
+      "MEDIUM": "متوسط",
+      "HIGH": "زیاد",
+      "CRITICAL": "بحرانی"
+    },
+    "actions": {
+      "acknowledge": "تأیید رؤیت",
+      "acknowledgeSuccess": "رویداد تأیید شد."
+    },
+    "empty": "رویداد امنیتی‌ای برای بررسی وجود ندارد."
+  }
+}

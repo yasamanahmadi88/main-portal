@@ -1,0 +1,10 @@
+---
+description: Backend modular monolith rules
+globs:
+  - backend/**
+---
+- Package-by-feature under `com.company.portal.*`.
+- Controllers: no business logic, no repository calls, never return JPA entities.
+- Application services own transaction boundaries.
+- Cross-module access only via public APIs or domain events.
+- Enforce with ArchUnit and Spring Modulith tests.

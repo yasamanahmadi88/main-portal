@@ -1,0 +1,48 @@
+<app-page-header [title]="'permissions.title'" [subtitle]="'permissions.subtitle'" />
+
+@if (state().loading) {
+  <div class="app-card">
+    <app-skeleton height="24px" width="30%" />
+    <app-skeleton height="16px" width="80%" />
+    <app-skeleton height="16px" width="70%" />
+  </div>
+} @else if (state().error) {
+  <app-error-state (retry)="load()" />
+} @else {
+  <mat-tab-group animationDuration="180ms">
+    <mat-tab [label]="'permissions.matrix.title' | translate">
+      @if (!state().matrix || state().matrix!.permissions.length === 0) {
+        <app-empty-state icon="grid_view" [title]="'permissions.empty'" />
+      } @else {
+        <p class="permissions-page__hint">{{ 'permissions.matrix.subtitle' | translate }}</p>
+        <app-permission-matrix [matrix]="state().matrix!" [readonly]="true" />
+      }
+    </mat-tab>
+    <mat-tab [label]="'permissions.title' | translate">
+      @if (state().permissions.length === 0) {
+        <app-empty-state icon="list" [title]="'permissions.empty'" />
+      } @else {
+        <ul class="permissions-page__list">
+          @for (permission of state().permissions; track permission.code) {
+            <li class="app-card permissions-page__row">
+              <div class="permissions-page__code">
+                <code>{{ permission.code }}</code>
+                <div class="permissions-page__meta">
+                  <span>{{ permission.module }}</span>
+                  <span>·</span>
+                  <span>{{ permission.action }}</span>
+                </div>
+              </div>
+              <div class="permissions-page__desc">{{ permission.description }}</div>
+              <div class="permissions-page__system">
+                @if (permission.system) {
+                  <app-status-badge tone="warning" label="common.labels.system" />
+                }
+              </div>
+            </li>
+          }
+        </ul>
+      }
+    </mat-tab>
+  </mat-tab-group>
+}

@@ -1,0 +1,55 @@
+<div class="sessions-page">
+  <div class="sessions-page__header">
+    <div>
+      <h2>{{ 'profile.sessions.title' | translate }}</h2>
+      <p>{{ 'profile.sessions.description' | translate }}</p>
+    </div>
+    <button mat-stroked-button color="warn" type="button" (click)="revokeAll()" [disabled]="busy() || sessions().length < 2">
+      <mat-icon aria-hidden="true">logout</mat-icon>
+      <span>{{ 'profile.sessions.revokeAll' | translate }}</span>
+    </button>
+  </div>
+
+  @if (loading()) {
+    <div class="app-card">
+      <app-skeleton height="16px" />
+      <app-skeleton height="16px" />
+    </div>
+  } @else if (error()) {
+    <app-error-state (retry)="load()" />
+  } @else if (sessions().length === 0) {
+    <app-empty-state icon="devices" [title]="'profile.sessions.empty'" />
+  } @else {
+    <ul class="sessions-list">
+      @for (session of sessions(); track session.id) {
+        <li class="app-card">
+          <div class="sessions-list__body">
+            <div class="sessions-list__title">
+              {{ session.userAgent || '—' }}
+              @if (session.current) {
+                <app-status-badge tone="primary" label="profile.sessions.current" />
+              }
+            </div>
+            <div class="sessions-list__meta">
+              <span>{{ session.ipAddress || '—' }}</span>
+              <span>·</span>
+              <span>{{ session.lastAccessedAt | date: 'medium' }}</span>
+            </div>
+          </div>
+          @if (!session.current) {
+            <button
+              mat-stroked-button
+              color="warn"
+              type="button"
+              (click)="revoke(session)"
+              [disabled]="busy()"
+            >
+              <mat-icon aria-hidden="true">delete</mat-icon>
+              <span>{{ 'profile.sessions.revoke' | translate }}</span>
+            </button>
+          }
+        </li>
+      }
+    </ul>
+  }
+</div>

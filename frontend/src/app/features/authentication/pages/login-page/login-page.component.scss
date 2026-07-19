@@ -1,0 +1,17 @@
+@use 'auth-card';
+@include auth-card.auth-card;
+
+.auth-card__row--end {
+  justify-content: flex-end;
+}
+
+.auth-card__contact {
+  color: var(--app-color-primary);
+  font-weight: 500;
+}
+
+.auth-alert__detail {
+  color: var(--app-color-text-secondary);
+  font-size: var(--app-font-size-xs);
+  margin-block-start: 2px;
+}

@@ -1,0 +1,76 @@
+<section class="auth-card">
+  <header>
+    <mat-icon aria-hidden="true" class="auth-card__icon">verified_user</mat-icon>
+    <h1>{{ 'authentication.mfa.title' | translate }}</h1>
+    <p>{{ 'authentication.mfa.subtitle' | translate }}</p>
+  </header>
+
+  @if (errorKey()) {
+    <div class="auth-alert" role="alert">
+      <mat-icon aria-hidden="true">warning</mat-icon>
+      <span>{{ errorKey()! | translate }}</span>
+    </div>
+  }
+
+  @if (mode() === 'TOTP') {
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'authentication.mfa.codeLabel' | translate }}</mat-label>
+        <input
+          matInput
+          type="text"
+          inputmode="numeric"
+          formControlName="code"
+          autocomplete="one-time-code"
+          maxlength="8"
+          pattern="[0-9]*"
+        />
+        <mat-icon matSuffix aria-hidden="true">pin</mat-icon>
+      </mat-form-field>
+      <button
+        mat-flat-button
+        color="primary"
+        type="submit"
+        class="auth-card__submit"
+        [disabled]="submitting() || form.invalid"
+      >
+        @if (submitting()) {
+          <mat-progress-spinner mode="indeterminate" diameter="20" />
+        }
+        <span>{{ 'authentication.mfa.submit' | translate }}</span>
+      </button>
+      <button mat-button type="button" (click)="useRecovery()" class="auth-card__alt">
+        {{ 'authentication.mfa.useRecovery' | translate }}
+      </button>
+    </form>
+  } @else {
+    <form [formGroup]="recoveryForm" (ngSubmit)="submit()" novalidate>
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'authentication.mfa.recoveryCodeLabel' | translate }}</mat-label>
+        <input
+          matInput
+          type="text"
+          formControlName="recoveryCode"
+          autocomplete="one-time-code"
+          autocapitalize="characters"
+        />
+        <mat-icon matSuffix aria-hidden="true">password</mat-icon>
+      </mat-form-field>
+      <button
+        mat-flat-button
+        color="primary"
+        type="submit"
+        class="auth-card__submit"
+        [disabled]="submitting() || recoveryForm.invalid"
+      >
+        @if (submitting()) {
+          <mat-progress-spinner mode="indeterminate" diameter="20" />
+        }
+        <span>{{ 'authentication.mfa.recoverySubmit' | translate }}</span>
+      </button>
+      <button mat-button type="button" (click)="useAuthenticator()" class="auth-card__alt">
+        {{ 'authentication.mfa.useAuthenticator' | translate }}
+      </button>
+    </form>
+  }
+</section>

@@ -1,0 +1,10 @@
+---
+description: Repository conventions for the enterprise portal
+globs:
+alwaysApply: true
+---
+- Work in repository root; never nest a duplicate repo.
+- Conventional Commits; keep the tree buildable after each phase.
+- Never commit secrets, `.env`, `node_modules`, `target`, `dist`, or coverage.
+- Update PROGRESS.md, NEXT-STEPS.md, QUALITY-GATES.md with evidence.
+- API contract lives in `contracts/openapi/portal-v1.yaml`.

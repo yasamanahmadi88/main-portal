@@ -1,0 +1,76 @@
+# Gitleaks configuration for the enterprise portal.
+#
+# The `default` extension pulls in the built-in Gitleaks ruleset (JWTs,
+# AWS keys, PEM blocks, GitHub tokens, …).  On top of that we add:
+#
+#   * A ruleset-wide allowlist that whitelists documentation placeholders
+#     under `.env.example`, docs/**, README.md, so we don't trip on the
+#     literal strings `change-me-*` used to communicate "put a real
+#     secret here".
+#
+#   * A rule for AES-256 keys accidentally hard-coded as Base64 literals
+#     — this is a portal-specific concern because MFA_ENCRYPTION_KEY_*
+#     is exactly such a key.
+
+title = "portal-gitleaks"
+
+[extend]
+useDefault = true
+
+# ---------------------------------------------------------------------------
+#  Global allowlist — matched against the entire finding (path + line).
+# ---------------------------------------------------------------------------
+[allowlist]
+description = "Ignore documentation placeholders and generated artifacts."
+paths = [
+    '''(^|/)\.env\.example$''',
+    '''(^|/)README\.md$''',
+    '''(^|/)CHANGELOG\.md$''',
+    '''(^|/)CONTRIBUTING\.md$''',
+    '''(^|/)SECURITY\.md$''',
+    '''(^|/)docs/.*''',
+    '''(^|/)infrastructure/security/gitleaks\.toml$''',
+    '''(^|/)infrastructure/database/README\.md$''',
+    '''(^|/)frontend/package-lock\.json$''',
+    '''(^|/)backend/target/.*''',
+    '''(^|/)backend/src/test/.*''',
+    '''(^|/)frontend/dist/.*''',
+    '''(^|/)frontend/node_modules/.*''',
+    '''\.min\.(js|css)$''',
+]
+regexes = [
+    '''change-me-[a-zA-Z0-9_-]+''',
+    '''AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=''',      # placeholder MFA key
+    '''your[-_]?password[-_]?here''',
+    '''replace-?me''',
+    '''example\.(com|org|net)''',
+]
+stopwords = [
+    "example",
+    "sample",
+    "placeholder",
+    "demo",
+]
+
+# ---------------------------------------------------------------------------
+#  Custom rule — Base64-encoded 32-byte symmetric keys.
+# ---------------------------------------------------------------------------
+[[rules]]
+id = "portal-symmetric-key-base64"
+description = "Base64 encoded 32-byte symmetric encryption key"
+regex = '''(?i)(mfa|aes|encryption|secret)[_-]?key[_-]?(base64)?\s*[:=]\s*['\"]?([A-Za-z0-9+/=]{40,50})['\"]?'''
+tags = ["key", "crypto"]
+[rules.allowlist]
+regexes = [
+    '''AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=''',
+    '''change-me-[a-zA-Z0-9_-]+''',
+]
+
+# ---------------------------------------------------------------------------
+#  Custom rule — bcrypt/argon2 hashes committed by mistake.
+# ---------------------------------------------------------------------------
+[[rules]]
+id = "portal-password-hash"
+description = "Password hash accidentally committed"
+regex = '''\$(argon2(id|i|d)|2[abxy])\$[A-Za-z0-9$+/=,.-]{20,}'''
+tags = ["hash", "crypto"]

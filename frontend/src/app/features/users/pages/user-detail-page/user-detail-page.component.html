@@ -1,0 +1,114 @@
+@if (loading()) {
+  <app-page-header [title]="'common.labels.loading'"></app-page-header>
+  <div class="app-card">
+    <app-skeleton height="24px" width="40%" />
+    <app-skeleton height="16px" width="80%" />
+  </div>
+} @else if (error() || !user()) {
+  <app-error-state [title]="'common.errors.title'" (retry)="userId() && load(userId()!)" />
+} @else {
+  <app-page-header [title]="user()!.displayName">
+    <div actions>
+      <a mat-stroked-button [routerLink]="['/users']">
+        <mat-icon aria-hidden="true">arrow_back</mat-icon>
+        <span>{{ 'common.actions.back' | translate }}</span>
+      </a>
+      <a mat-stroked-button [routerLink]="['/users', user()!.id, 'edit']">
+        <mat-icon aria-hidden="true">edit</mat-icon>
+        <span>{{ 'common.actions.edit' | translate }}</span>
+      </a>
+      <button mat-flat-button color="primary" [matMenuTriggerFor]="menu" [disabled]="busy()">
+        <mat-icon aria-hidden="true">more_horiz</mat-icon>
+        <span>{{ 'common.actions.acknowledge' | translate }}</span>
+      </button>
+      <mat-menu #menu="matMenu">
+        @if (user()!.status !== 'ACTIVE') {
+          <button mat-menu-item type="button" (click)="activate()">
+            <mat-icon aria-hidden="true">check_circle</mat-icon>
+            <span>{{ 'users.actions.activate' | translate }}</span>
+          </button>
+        }
+        @if (user()!.status === 'ACTIVE') {
+          <button mat-menu-item type="button" (click)="deactivate()">
+            <mat-icon aria-hidden="true">block</mat-icon>
+            <span>{{ 'users.actions.deactivate' | translate }}</span>
+          </button>
+        }
+        @if (user()!.status === 'LOCKED') {
+          <button mat-menu-item type="button" (click)="unlock()">
+            <mat-icon aria-hidden="true">lock_open</mat-icon>
+            <span>{{ 'users.actions.unlock' | translate }}</span>
+          </button>
+        }
+        <button mat-menu-item type="button" (click)="triggerPasswordReset()">
+          <mat-icon aria-hidden="true">password</mat-icon>
+          <span>{{ 'users.actions.resetPassword' | translate }}</span>
+        </button>
+        <button mat-menu-item type="button" (click)="resetMfa()">
+          <mat-icon aria-hidden="true">shield_lock</mat-icon>
+          <span>{{ 'users.actions.resetMfa' | translate }}</span>
+        </button>
+        <button mat-menu-item type="button" (click)="revokeSessions()">
+          <mat-icon aria-hidden="true">logout</mat-icon>
+          <span>{{ 'users.actions.revokeSessions' | translate }}</span>
+        </button>
+      </mat-menu>
+    </div>
+  </app-page-header>
+
+  <div class="detail-grid">
+    <section class="app-card detail-card">
+      <div class="detail-card__header">
+        <span class="detail-card__handle">{{ '@' + user()!.username }}</span>
+        <app-status-badge [tone]="statusTone()" [label]="'users.status.' + user()!.status" />
+      </div>
+      <dl class="detail-list">
+        <div>
+          <dt>{{ 'users.columns.email' | translate }}</dt>
+          <dd>{{ user()!.email }}</dd>
+        </div>
+        <div>
+          <dt>{{ 'common.labels.lastLogin' | translate }}</dt>
+          <dd>{{ user()!.lastLoginAt ? (user()!.lastLoginAt | date: 'medium') : ('common.labels.notAvailable' | translate) }}</dd>
+        </div>
+        <div>
+          <dt>{{ 'common.labels.createdAt' | translate }}</dt>
+          <dd>{{ user()!.createdAt | date: 'medium' }}</dd>
+        </div>
+        <div>
+          <dt>{{ 'common.labels.updatedAt' | translate }}</dt>
+          <dd>{{ user()!.updatedAt | date: 'medium' }}</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="app-card detail-card">
+      <h2>{{ 'users.detail.roles' | translate }}</h2>
+      @if (user()!.roles.length === 0) {
+        <p class="detail-empty">{{ 'common.labels.notAvailable' | translate }}</p>
+      } @else {
+        <ul class="detail-list detail-list--tags">
+          @for (role of user()!.roles; track role.id) {
+            <li>
+              <app-status-badge tone="primary" [label]="null">
+                {{ role.name }}
+              </app-status-badge>
+            </li>
+          }
+        </ul>
+      }
+      <h2 class="detail-secondary-heading">{{ 'users.detail.permissions' | translate }}</h2>
+      @if (user()!.permissions.length === 0) {
+        <p class="detail-empty">{{ 'common.labels.notAvailable' | translate }}</p>
+      } @else {
+        <ul class="detail-list detail-list--tags">
+          @for (code of user()!.permissions; track code) {
+            <li>
+              <code class="detail-code">{{ code }}</code>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  </div>
+}

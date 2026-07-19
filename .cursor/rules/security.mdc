@@ -1,0 +1,9 @@
+---
+description: Security and auth rules
+globs:
+  - "**/*"
+---
+- Deny-by-default; permission-based authorization (`hasAuthority`).
+- Never disable CSRF; Argon2id for passwords; encrypt TOTP secrets.
+- Generic auth failures (no enumeration); rate-limit login.
+- Never log passwords, tokens, CSRF, session IDs, or MFA secrets.

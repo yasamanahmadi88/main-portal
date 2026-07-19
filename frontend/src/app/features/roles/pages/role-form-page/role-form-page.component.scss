@@ -1,0 +1,11 @@
+.role-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-3);
+  max-inline-size: var(--app-container-medium);
+}
+.role-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--app-space-2);
+}
