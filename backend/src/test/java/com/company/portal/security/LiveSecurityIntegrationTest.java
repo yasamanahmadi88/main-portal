@@ -9,8 +9,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.company.portal.support.AbstractIntegrationTest;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,7 +34,9 @@ class LiveSecurityIntegrationTest extends AbstractIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
   @Autowired private JdbcTemplate jdbcTemplate;
-  @Autowired private ObjectMapper objectMapper;
+
+  private static final Pattern CAPTCHA_ID = Pattern.compile("\"captchaId\"\\s*:\\s*\"([^\"]+)\"");
+  private static final Pattern CAPTCHA_ANSWER = Pattern.compile("\"revealAnswer\"\\s*:\\s*\"([^\"]+)\"");
 
   @DynamicPropertySource
   static void bootstrapAdmin(DynamicPropertyRegistry registry) {
@@ -53,14 +55,20 @@ class LiveSecurityIntegrationTest extends AbstractIntegrationTest {
             .andExpect(jsonPath("$.captchaId").isNotEmpty())
             .andExpect(jsonPath("$.revealAnswer").isNotEmpty())
             .andReturn();
-    JsonNode node = objectMapper.readTree(captcha.getResponse().getContentAsString());
-    return objectMapper.writeValueAsString(
-        java.util.Map.of(
-            "username", username,
-            "password", password,
-            "captchaId", node.get("captchaId").asText(),
-            "captchaAnswer", node.get("revealAnswer").asText(),
-            "rememberDevice", false));
+    String body = captcha.getResponse().getContentAsString();
+    String captchaId = matchGroup(CAPTCHA_ID, body);
+    String answer = matchGroup(CAPTCHA_ANSWER, body);
+    return """
+        {"username":"%s","password":"%s","captchaId":"%s","captchaAnswer":"%s","rememberDevice":false}
+        """.formatted(username, password, captchaId, answer);
+  }
+
+  private static String matchGroup(Pattern pattern, String body) {
+    Matcher m = pattern.matcher(body);
+    if (!m.find()) {
+      throw new IllegalStateException("CAPTCHA field missing in: " + body);
+    }
+    return m.group(1);
   }
 
   @Test
@@ -131,15 +139,11 @@ class LiveSecurityIntegrationTest extends AbstractIntegrationTest {
   void invalidCaptchaBlocksLogin() throws Exception {
     MvcResult captcha =
         mockMvc.perform(get("/api/v1/auth/captcha")).andExpect(status().isOk()).andReturn();
-    JsonNode node = objectMapper.readTree(captcha.getResponse().getContentAsString());
+    String captchaId = matchGroup(CAPTCHA_ID, captcha.getResponse().getContentAsString());
     String body =
-        objectMapper.writeValueAsString(
-            java.util.Map.of(
-                "username", "admin@example.com",
-                "password", "ChangeMeNow!123",
-                "captchaId", node.get("captchaId").asText(),
-                "captchaAnswer", "!!!!!",
-                "rememberDevice", false));
+        """
+        {"username":"admin@example.com","password":"ChangeMeNow!123","captchaId":"%s","captchaAnswer":"!!!!!","rememberDevice":false}
+        """.formatted(captchaId);
     mockMvc
         .perform(
             post("/api/v1/auth/login")
