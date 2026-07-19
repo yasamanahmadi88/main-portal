@@ -10,7 +10,8 @@ export const I18N_NAMESPACES = [
   'permissions',
   'audit',
   'security-events',
-  'settings'
+  'settings',
+  'monitoring'
 ] as const;
 
 export type I18nNamespace = (typeof I18N_NAMESPACES)[number];

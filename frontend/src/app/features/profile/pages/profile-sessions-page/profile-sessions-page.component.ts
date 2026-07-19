@@ -13,7 +13,8 @@ import {
   ErrorStateComponent,
   StatusBadgeComponent,
   SkeletonComponent,
-  openConfirmDialog
+  openConfirmDialog,
+  openPasswordConfirmDialog
 } from '@shared/ui';
 import type { Session } from '@shared/models';
 
@@ -80,7 +81,11 @@ export class ProfileSessionsPageComponent {
       tone: 'danger'
     });
     if (!ok) return;
-    const password = prompt('Confirm your password');
+    const password = await openPasswordConfirmDialog(this.dialog, {
+      titleKey: 'common.passwordConfirm.title',
+      messageKey: 'common.passwordConfirm.message',
+      tone: 'danger'
+    });
     if (!password) return;
     this.busy.set(true);
     try {

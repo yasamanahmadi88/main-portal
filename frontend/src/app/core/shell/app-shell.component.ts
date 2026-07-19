@@ -57,6 +57,9 @@ export class AppShellComponent {
     this.primaryNav.filter((item) => this.canSee(item))
   );
 
+  readonly canSecurityShortcut = computed(() => this.auth.hasPermission('SECURITY_READ'));
+  readonly canMonitoringShortcut = computed(() => this.auth.hasPermission('MONITORING_READ'));
+
   toggleSidenav(): void {
     this.sidenavOpen.update((v) => !v);
   }

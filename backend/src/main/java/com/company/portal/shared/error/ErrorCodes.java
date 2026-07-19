@@ -27,4 +27,7 @@ public final class ErrorCodes {
     public static final String ACCOUNT_LOCKED      = "account_locked";
     public static final String PASSWORD_POLICY     = "password_policy_violation";
     public static final String CSRF_INVALID        = "csrf_invalid";
+    public static final String CAPTCHA_INVALID     = "captcha_invalid";
+    public static final String CAPTCHA_EXPIRED     = "captcha_expired";
+    public static final String CAPTCHA_REQUIRED    = "captcha_required";
 }

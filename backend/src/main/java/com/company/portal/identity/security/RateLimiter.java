@@ -47,7 +47,16 @@ public class RateLimiter {
             boolean allowed = current <= policy.getCapacity();
             return new Decision(allowed, current, policy.getCapacity(), retry);
         } catch (RuntimeException e) {
-            log.debug("Rate limiter unavailable ({}) — failing open", e.getMessage());
+            // Fail closed for abuse-sensitive buckets (login / MFA / password reset).
+            // Global API traffic may still prefer availability — callers choose via bucket name.
+            boolean failClosed = bucket != null && (bucket.startsWith("login:")
+                    || bucket.startsWith("mfa:")
+                    || bucket.startsWith("password-reset:"));
+            if (failClosed) {
+                log.warn("Rate limiter unavailable ({}) — failing closed for bucket {}", e.getMessage(), bucket);
+                return new Decision(false, 0, policy.getCapacity(), 30);
+            }
+            log.debug("Rate limiter unavailable ({}) — failing open for bucket {}", e.getMessage(), bucket);
             return new Decision(true, 0, policy.getCapacity(), 0);
         }
     }

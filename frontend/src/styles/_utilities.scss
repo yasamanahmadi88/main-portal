@@ -13,6 +13,12 @@
   border: 0 !important;
 }
 
+.app-technical {
+  font-family: var(--app-font-family-mono);
+  unicode-bidi: isolate;
+  direction: ltr;
+}
+
 .app-page {
   padding-block: var(--app-space-6);
   padding-inline: var(--app-space-6);

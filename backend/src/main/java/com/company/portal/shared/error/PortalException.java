@@ -92,6 +92,18 @@ public class PortalException extends RuntimeException {
         }
     }
 
+    public static final class BadRequest extends PortalException {
+        public BadRequest(String code, String message) {
+            super(HttpStatus.BAD_REQUEST, code, message);
+        }
+    }
+
+    public static final class ServiceUnavailable extends PortalException {
+        public ServiceUnavailable(String code, String message) {
+            super(HttpStatus.SERVICE_UNAVAILABLE, code, message);
+        }
+    }
+
     public static final class RateLimited extends PortalException {
         private final long retryAfterSeconds;
 

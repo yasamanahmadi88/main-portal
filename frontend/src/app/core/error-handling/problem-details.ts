@@ -21,8 +21,14 @@ const CODE_MESSAGE_KEYS: Record<string, string> = {
   AUTH_SESSION_EXPIRED: 'authentication.errors.sessionExpired',
   AUTH_FORBIDDEN: 'authentication.errors.forbidden',
   RATE_LIMITED: 'common.errors.rateLimited',
+  rate_limited: 'common.errors.rateLimited',
+  captcha_invalid: 'authentication.errors.captchaInvalid',
+  captcha_expired: 'authentication.errors.captchaExpired',
+  captcha_required: 'authentication.errors.captchaRequired',
   VALIDATION_FAILED: 'validation.errors.generic',
-  CONFLICT: 'common.errors.conflict'
+  validation_failed: 'validation.errors.generic',
+  CONFLICT: 'common.errors.conflict',
+  conflict: 'common.errors.conflict'
 };
 
 export function normalizeHttpError(err: unknown): NormalizedError {

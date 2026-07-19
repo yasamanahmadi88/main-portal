@@ -1,4 +1,4 @@
-import { expect, test } from './utils';
+import { expect, fetchCaptcha, fillLoginCaptcha, test } from './utils';
 import AxeBuilder from '@axe-core/playwright';
 import type { APIRequestContext, Page } from '@playwright/test';
 
@@ -45,9 +45,16 @@ async function loginApi(
   let lastBody: unknown;
   for (let attempt = 0; attempt < 6; attempt++) {
     const token = await csrf(request);
+    const captcha = await fetchCaptcha(request);
     const res = await request.post('/api/v1/auth/login', {
       headers: { 'X-XSRF-TOKEN': token, 'Content-Type': 'application/json' },
-      data: { username: email, password, rememberDevice: false }
+      data: {
+        username: email,
+        password,
+        captchaId: captcha.captchaId,
+        captchaAnswer: captcha.captchaAnswer,
+        rememberDevice: false
+      }
     });
     lastBody = await res.json().catch(() => ({}));
     if (res.status() === 429) {
@@ -98,6 +105,7 @@ async function fillLoginForm(page: Page, username: string, password: string): Pr
   // Material password control does not expose formcontrolname on the native input.
   await page.getByRole('textbox', { name: /username or email|نام کاربری|ایمیل/i }).fill(username);
   await page.getByLabel(/^password$|^رمز عبور$/i).fill(password);
+  await fillLoginCaptcha(page);
 }
 
 async function submitLogin(page: Page): Promise<void> {
@@ -277,11 +285,25 @@ test.describe('Live login / logout / storage', () => {
   });
 
   test('CSRF rejection on login without token', async ({ request }) => {
+    const captcha = await fetchCaptcha(request);
     const res = await request.post('/api/v1/auth/login', {
       headers: { 'Content-Type': 'application/json' },
-      data: { username: 'x@y.com', password: 'abcdefghijkl', rememberDevice: false }
+      data: {
+        username: 'x@y.com',
+        password: 'abcdefghijkl',
+        captchaId: captcha.captchaId,
+        captchaAnswer: captcha.captchaAnswer,
+        rememberDevice: false
+      }
     });
     expect(res.status()).toBe(403);
+  });
+
+  test('login page exposes captcha test ids', async ({ page }) => {
+    await page.goto('/auth/login');
+    await expect(page.getByTestId('captcha-image')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId('captcha-answer')).toBeVisible();
+    await expect(page.getByTestId('captcha-refresh')).toBeVisible();
   });
 
   test('API login + me + sessions', async ({ request }) => {
@@ -305,18 +327,32 @@ test.describe('Live admin surfaces accessibility', () => {
     await page.goto('/auth/login');
     await expect(page.locator('[data-testid="language-switcher"]')).toBeVisible({ timeout: 30_000 });
     const token = await csrf(page.request);
+    const captcha = await fetchCaptcha(page.request);
     let loginRes = await page.request.post('/api/v1/auth/login', {
       headers: { 'X-XSRF-TOKEN': token, 'Content-Type': 'application/json' },
-      data: { username: ADMIN_EMAIL, password: ADMIN_PASSWORD, rememberDevice: false }
+      data: {
+        username: ADMIN_EMAIL,
+        password: ADMIN_PASSWORD,
+        captchaId: captcha.captchaId,
+        captchaAnswer: captcha.captchaAnswer,
+        rememberDevice: false
+      }
     });
     if (loginRes.status() === 429) {
       const body = await loginRes.json().catch(() => ({}));
       const retryAfter = Number(body?.retry_after_seconds ?? 30) || 30;
       await page.waitForTimeout((retryAfter + 2) * 1000);
       const token2 = await csrf(page.request);
+      const captcha2 = await fetchCaptcha(page.request);
       loginRes = await page.request.post('/api/v1/auth/login', {
         headers: { 'X-XSRF-TOKEN': token2, 'Content-Type': 'application/json' },
-        data: { username: ADMIN_EMAIL, password: ADMIN_PASSWORD, rememberDevice: false }
+        data: {
+          username: ADMIN_EMAIL,
+          password: ADMIN_PASSWORD,
+          captchaId: captcha2.captchaId,
+          captchaAnswer: captcha2.captchaAnswer,
+          rememberDevice: false
+        }
       });
     }
     expect(loginRes.status(), await loginRes.text()).toBe(200);

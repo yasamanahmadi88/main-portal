@@ -36,6 +36,10 @@ fi
 COOKIE_JAR="$(mktemp)"
 trap 'rm -f "$COOKIE_JAR"' EXIT
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=captcha-login.sh
+source "$SCRIPT_DIR/captcha-login.sh"
+
 csrf() {
   local body
   body="$(curl -fsS -c "$COOKIE_JAR" -b "$COOKIE_JAR" "$BASE_URL/api/v1/auth/csrf")"
@@ -47,11 +51,7 @@ code="$(curl -s -o /tmp/boot-login.json -w '%{http_code}' -c "$COOKIE_JAR" -b "$
   -X POST "$BASE_URL/api/v1/auth/login" \
   -H 'Content-Type: application/json' \
   -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
-  -d "$(python3 - <<PY
-import json,os
-print(json.dumps({"username":os.environ["PORTAL_BOOTSTRAP_ADMIN_EMAIL"],"password":os.environ["PORTAL_BOOTSTRAP_ADMIN_PASSWORD"],"rememberDevice":False}))
-PY
-)")"
+  -d "$(login_json "$PORTAL_BOOTSTRAP_ADMIN_EMAIL" "$PORTAL_BOOTSTRAP_ADMIN_PASSWORD")")"
 [[ "$code" == "200" ]] || { cat /tmp/boot-login.json >>"$EVIDENCE"; fail "bootstrap admin login failed HTTP $code"; }
 
 python3 - <<PY

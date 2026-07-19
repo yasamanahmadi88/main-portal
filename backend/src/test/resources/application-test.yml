@@ -25,6 +25,8 @@ server:
 portal:
   bootstrap:
     enabled: false
+  captcha:
+    reveal-answer: true
   session:
     cookie:
       name: PORTAL_SESSION

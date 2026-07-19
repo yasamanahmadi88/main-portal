@@ -94,6 +94,12 @@
   --app-color-accent-soft: #efe6ff;
   --app-color-on-accent: #ffffff;
 
+  // Text/icons painted on brand gradient surfaces
+  --app-color-brand-on: #ffffff;
+  --app-color-brand-on-muted: color-mix(in oklab, var(--app-color-brand-on) 88%, transparent);
+  --app-color-brand-on-soft: color-mix(in oklab, var(--app-color-brand-on) 12%, transparent);
+  --app-color-brand-glow: color-mix(in oklab, var(--app-color-brand-on) 24%, transparent);
+
   --app-color-success: #187a3a;
   --app-color-success-soft: #dff5e6;
   --app-color-on-success: #ffffff;
@@ -145,6 +151,11 @@
   --app-color-accent: #b394ff;
   --app-color-accent-soft: rgba(179, 148, 255, 0.16);
   --app-color-on-accent: #17102b;
+
+  --app-color-brand-on: #ffffff;
+  --app-color-brand-on-muted: color-mix(in oklab, var(--app-color-brand-on) 88%, transparent);
+  --app-color-brand-on-soft: color-mix(in oklab, var(--app-color-brand-on) 12%, transparent);
+  --app-color-brand-glow: color-mix(in oklab, var(--app-color-brand-on) 24%, transparent);
 
   --app-color-success: #5ce194;
   --app-color-success-soft: rgba(92, 225, 148, 0.14);

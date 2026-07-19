@@ -42,10 +42,20 @@ import { AuthService } from '@core/authentication/auth.service';
         <mat-icon aria-hidden="true">person</mat-icon>
         <span>{{ 'navigation.profile' | translate }}</span>
       </a>
+      <a mat-menu-item routerLink="/profile/security">
+        <mat-icon aria-hidden="true">verified_user</mat-icon>
+        <span>{{ 'navigation.profileSecurity' | translate }}</span>
+      </a>
       <a mat-menu-item routerLink="/profile/sessions">
         <mat-icon aria-hidden="true">devices</mat-icon>
         <span>{{ 'profile.sessions.title' | translate }}</span>
       </a>
+      @if (canMonitoring()) {
+        <a mat-menu-item routerLink="/monitoring">
+          <mat-icon aria-hidden="true">monitoring</mat-icon>
+          <span>{{ 'navigation.monitoring' | translate }}</span>
+        </a>
+      }
       <mat-divider />
       <button mat-menu-item type="button" (click)="signOut()">
         <mat-icon aria-hidden="true">logout</mat-icon>
@@ -102,6 +112,7 @@ export class UserMenuComponent {
   readonly user = this.auth.user;
   readonly displayName = computed(() => this.user()?.displayName ?? '');
   readonly email = computed(() => this.user()?.email ?? '');
+  readonly canMonitoring = computed(() => this.auth.hasPermission('MONITORING_READ'));
   readonly initials = computed(() => {
     const name = this.displayName();
     if (!name) return '?';

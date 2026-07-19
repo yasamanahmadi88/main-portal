@@ -46,6 +46,14 @@
       }
     </app-password-input>
 
+    <app-captcha-challenge
+      [captchaId]="form.controls.captchaId.value"
+      [captchaAnswer]="form.controls.captchaAnswer.value"
+      (captchaIdChange)="onCaptchaIdChange($event)"
+      (captchaAnswerChange)="onCaptchaAnswerChange($event)"
+      (failed)="onCaptchaFailed()"
+    />
+
     <div class="auth-card__row auth-card__row--end">
       <a routerLink="/auth/forgot-password" class="auth-card__link">
         {{ 'authentication.login.forgot' | translate }}
@@ -57,7 +65,7 @@
       color="primary"
       type="submit"
       class="auth-card__submit"
-      [disabled]="submitting() || form.invalid"
+      [disabled]="submitting() || !captchaReady() || form.invalid"
     >
       @if (submitting()) {
         <mat-progress-spinner mode="indeterminate" diameter="20" />

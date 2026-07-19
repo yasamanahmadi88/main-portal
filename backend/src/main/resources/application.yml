@@ -241,3 +241,13 @@ portal:
   audit:
     hash-chain-enabled: true
     hash-algorithm: SHA-256
+  captcha:
+    # Always required for login. No development bypass.
+    enabled: ${CAPTCHA_ENABLED:true}
+    ttl: ${CAPTCHA_TTL:2m}
+    length: ${CAPTCHA_LENGTH:5}
+    # Test/e2e only — never set in production (startup fails if prod + true).
+    reveal-answer: ${CAPTCHA_REVEAL_ANSWER:false}
+  monitoring:
+    grafana-public-url: ${GRAFANA_PUBLIC_URL:}
+    prometheus-public-url: ${PROMETHEUS_PUBLIC_URL:}

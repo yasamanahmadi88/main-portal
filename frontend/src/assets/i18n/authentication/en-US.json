@@ -64,6 +64,12 @@
       "description": "The portal is temporarily unavailable while we deploy an update. We'll be back shortly.",
       "retry": "Try again"
     },
+    "captcha": {
+      "label": "Security check",
+      "answerLabel": "Enter the characters you see",
+      "refresh": "New image",
+      "loadError": "Could not load the security check. Try refreshing."
+    },
     "hints": {
       "capsLock": "Caps Lock is on"
     },
@@ -75,7 +81,10 @@
       "mfaExpired": "This verification challenge has expired. Please sign in again.",
       "sessionExpired": "Your session has expired.",
       "forbidden": "Access denied.",
-      "resetTokenInvalid": "The reset link is invalid or expired."
+      "resetTokenInvalid": "The reset link is invalid or expired.",
+      "captchaInvalid": "The security check answer is incorrect. Please try again.",
+      "captchaExpired": "The security check expired. A new image has been loaded.",
+      "captchaRequired": "Complete the security check to continue."
     }
   }
 }

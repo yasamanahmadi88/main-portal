@@ -3,6 +3,7 @@ export * from './confirm-dialog/confirm-dialog.component';
 export * from './empty-state/empty-state.component';
 export * from './error-state/error-state.component';
 export * from './page-header/page-header.component';
+export * from './password-confirm-dialog/password-confirm-dialog.component';
 export * from './password-input/password-input.component';
 export * from './permission-matrix/permission-matrix.component';
 export * from './skeleton/skeleton.component';

@@ -8,6 +8,7 @@ import com.company.portal.identity.domain.PasswordResetTokenEntity;
 import com.company.portal.identity.domain.UserEntity;
 import com.company.portal.identity.repository.PasswordResetTokenRepository;
 import com.company.portal.identity.repository.UserRepository;
+import com.company.portal.identity.security.RateLimiter;
 import com.company.portal.notification.api.NotificationService;
 import com.company.portal.shared.config.PortalProperties;
 import com.company.portal.shared.error.ErrorCodes;
@@ -47,6 +48,7 @@ public class PasswordService {
     private final NotificationService notifications;
     private final AuditService auditService;
     private final PortalProperties portalProperties;
+    private final RateLimiter rateLimiter;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public PasswordService(UserRepository users,
@@ -54,18 +56,34 @@ public class PasswordService {
                            PasswordEncoder passwordEncoder,
                            NotificationService notifications,
                            AuditService auditService,
-                           PortalProperties portalProperties) {
+                           PortalProperties portalProperties,
+                           RateLimiter rateLimiter) {
         this.users = users;
         this.tokens = tokens;
         this.passwordEncoder = passwordEncoder;
         this.notifications = notifications;
         this.auditService = auditService;
         this.portalProperties = portalProperties;
+        this.rateLimiter = rateLimiter;
     }
 
     @Transactional
     public void requestPasswordReset(String rawEmail, String ip, String userAgent) {
         String normalized = rawEmail == null ? "" : rawEmail.trim().toLowerCase();
+        if (ip != null && !ip.isBlank()) {
+            RateLimiter.Decision d = rateLimiter.allow(
+                    "password-reset:ip", ip, portalProperties.getRateLimit().getPasswordReset());
+            if (!d.allowed()) {
+                throw new PortalException.RateLimited("Too many password reset requests", d.retryAfterSeconds());
+            }
+        }
+        if (!normalized.isBlank()) {
+            RateLimiter.Decision d = rateLimiter.allow(
+                    "password-reset:email", normalized, portalProperties.getRateLimit().getPasswordReset());
+            if (!d.allowed()) {
+                throw new PortalException.RateLimited("Too many password reset requests", d.retryAfterSeconds());
+            }
+        }
         Optional<UserEntity> userOpt = users.findByEmailNormalized(normalized);
         if (userOpt.isEmpty()) {
             // Do NOT signal presence to caller. Log for diagnostics.

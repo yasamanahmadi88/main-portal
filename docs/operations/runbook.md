@@ -19,7 +19,7 @@ npm install
 npm start
 ```
 
-The local stack expects PostgreSQL, Redis, and optional Mailpit configuration matching `.env.example`. Docker Compose is not yet committed.
+The local stack is Docker-first via `compose.yaml` (optional `compose.dev.yaml` / `compose.observability.yaml`). Configuration matches `.env.example`.
 
 ### Production startup checklist
 
