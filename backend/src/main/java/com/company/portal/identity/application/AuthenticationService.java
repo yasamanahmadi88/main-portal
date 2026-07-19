@@ -132,12 +132,13 @@ public class AuthenticationService {
         UserEntity user = userOpt.get();
 
         if (user.getLockoutUntil() != null && user.getLockoutUntil().isAfter(OffsetDateTime.now())) {
+            // Same client-facing failure as invalid credentials to avoid account
+            // existence / lock-state enumeration. Internal security events remain specific.
             recordFailure(user.getId(), emailNormalized, ip, ua, "LOCKED");
             securityEvents.publish("AUTH_LOGIN_ON_LOCKED_ACCOUNT", SecurityEventLevel.HIGH,
                     user.getId(), ip, ua, RequestContext.correlationId(), null,
                     Map.of("email", emailNormalized));
-            throw new PortalException.Unauthorized(ErrorCodes.ACCOUNT_LOCKED,
-                    "Account is temporarily locked");
+            throw genericInvalidCredentials();
         }
         if (user.getStatus() == UserStatus.DISABLED || user.getStatus() == UserStatus.DELETED) {
             recordFailure(user.getId(), emailNormalized, ip, ua, "DISABLED");

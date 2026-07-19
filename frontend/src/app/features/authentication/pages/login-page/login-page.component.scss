@@ -1,6 +1,10 @@
 @use 'auth-card';
 @include auth-card.auth-card;
 
+.auth-card__row--end {
+  justify-content: flex-end;
+}
+
 .auth-card__contact {
   color: var(--app-color-primary);
   font-weight: 500;

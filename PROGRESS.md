@@ -2,46 +2,43 @@
 
 ## Current phase
 
-Phases 0–15 delivered. Remaining live-verification gaps closed via green GitHub Actions `fullstack-verify` (compose stack, bootstrap, API security, RBAC matrix, audit DB, Playwright+Axe, ZAP, observability, rate-limit).
+Enterprise portal consolidated onto **`main`** as the sole long-lived branch. Live verification gaps closed via green GitHub Actions `fullstack-verify`. Compared with `secure-portal` and retained as the advanced codebase (see `docs/comparison/secure-portal-vs-main-portal.md`).
 
-## Branch / PR
+## Branch policy
 
-- Branch: `cursor/complete-enterprise-portal`
-- Tip: `41eac10053e749b6dde0a305ee9fc2b1f9900e80`
-- PR: https://github.com/yasamanahmadi88/main-portal/pull/2
-- Green fullstack (push): https://github.com/yasamanahmadi88/main-portal/actions/runs/29050258913
-- Green fullstack (PR): https://github.com/yasamanahmadi88/main-portal/actions/runs/29050262164
+- **Only `main`** is kept on `yasamanahmadi88/main-portal`.
+- Feature / agent branches were deleted after consolidation.
+- Tip after consolidation includes login hardening (generic lockout responses) and ops docs ported from `secure-portal`.
 
-## Live verification results (executed)
+## Live verification (executed)
 
 | Item | Result |
 |------|--------|
 | Compose stack healthy | PASS |
-| Bootstrap admin (Argon2id, SUPER_ADMIN, audit, no plaintext in logs) | PASS |
-| Second bootstrap no-op after users exist | PASS |
-| Auth after clearing bootstrap env | PASS |
-| Live API (CSRF, session cookie, `/me`, logout, headers) | PASS |
-| RBAC matrix (8 initial roles + SUPER_ADMIN protection) | PASS |
-| Audit DB append-only + hash chain API | PASS |
-| SPA boot smoke (CSP/i18n/assets) | PASS |
-| Playwright + Axe live | PASS — **12 passed** |
-| OWASP ZAP baseline | PASS artifact — 0 High, 1 Medium (CSP style-src unsafe-inline) |
-| Login rate-limit burst | PASS — HTTP 429 observed |
+| Bootstrap admin (Argon2id, SUPER_ADMIN) | PASS |
+| Live API CSRF / session / logout / headers | PASS |
+| RBAC matrix (8 roles + SUPER_ADMIN guards) | PASS |
+| Audit append-only + hash chain | PASS |
+| Playwright + Axe | PASS (12 tests) |
+| OWASP ZAP baseline | 0 High; 1 Medium CSP style-src (documented) |
+| Login rate-limit burst | PASS (HTTP 429) |
 | CI / container-build / sbom | PASS |
 
-## SPA boot remediation (required for live e2e)
+## Ported from secure-portal (docs/DX only)
 
-1. `upgrade-insecure-requests` only when HTTPS (`$forwarded_scheme`)
-2. External `theme-bootstrap.js`; production `inlineCritical: false`
-3. Absolute `/assets/i18n/...` prefixes
-4. Preference `effect()` via `runInInjectionContext` before APP_INITIALIZER await
-5. Muted text contrast raised for WCAG AA; snackbar action removed (aria-hidden-focus)
+- `docs/operations/key-rotation.md`
+- `docs/operations/incident-response.md`
+- `docs/operations/backup-restore.md`
+- `compose.dev.yaml`
+
+## Login / security polish (post-verify)
+
+- Locked accounts return the same generic auth failure as bad credentials (no lock-state enumeration).
+- Removed unimplemented “trust this device” checkbox from the login UI.
 
 ## Known limitations (truthful)
 
-- Cursor Cloud cannot run Docker containers; live evidence is from GitHub Actions.
-- Live TOTP enroll/challenge/recovery Playwright scenarios are not yet a dedicated suite (unit + encryption wiring verified).
-- Full Tempo/Loki/Grafana correlation requires `compose.observability.yaml` profile (not started in default fullstack job).
-- Production TLS/WAF/backup immutability remain environment/process controls.
-- ZAP Medium: Angular Material requires `style-src 'unsafe-inline'` — accepted candidate, not falsely marked fixed.
-- Session ID rotation before/after compare and idle-timeout soak are not yet automated shell assertions.
+- Dedicated live MFA enroll/challenge/recovery Playwright suite still expanding.
+- Full Tempo/Loki/Grafana correlation needs `compose.observability.yaml`.
+- Production TLS/WAF/backup immutability remain environment controls.
+- External pen-test still required before production.

@@ -2,7 +2,7 @@
 
 ## Supported status
 
-This project is not yet production-ready. Architecture and security controls are being designed and implemented incrementally. Verification status is tracked in `QUALITY-GATES.md` and `docs/security/asvs-5-checklist.md`.
+Core authentication, CSRF, Redis sessions, RBAC, audit integrity, and compose-stack controls are implemented and evidenced by green `fullstack-verify` CI. Residual gaps (live MFA e2e suite, production TLS/WAF, external pen-test, observability overlay) are tracked in `QUALITY-GATES.md`, `docs/security/asvs-5-checklist.md`, and `docs/security/accepted-risks.md`. Treat as **candidate for human security review**, not auto-approved for production go-live.
 
 ## Reporting vulnerabilities
 

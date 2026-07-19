@@ -3,7 +3,6 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -22,7 +21,6 @@ import { PasswordInputComponent } from '@shared/ui';
     ReactiveFormsModule,
     RouterLink,
     MatButtonModule,
-    MatCheckboxModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
@@ -41,8 +39,7 @@ export class LoginPageComponent {
 
   readonly form = this.fb.nonNullable.group({
     username: ['', [Validators.required, Validators.maxLength(160)]],
-    password: ['', [Validators.required, Validators.minLength(1)]],
-    rememberDevice: [false]
+    password: ['', [Validators.required, Validators.minLength(1)]]
   });
 
   readonly submitting = signal(false);
@@ -56,7 +53,9 @@ export class LoginPageComponent {
     this.errorKey.set(null);
     this.errorDetail.set(null);
     try {
-      const response = await this.auth.login(this.form.getRawValue());
+      // rememberDevice is reserved for a future trusted-device feature; never advertise a stub UI.
+      const { username, password } = this.form.getRawValue();
+      const response = await this.auth.login({ username, password, rememberDevice: false });
       if (response.status === 'MFA_REQUIRED') {
         await this.router.navigate(['/auth/mfa']);
         return;

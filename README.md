@@ -1,8 +1,10 @@
 ﻿# Enterprise Portal
 
-Secure enterprise portal foundation built as a modular monolith with a Spring Boot backend and Angular frontend.
+Secure enterprise portal built as a modular monolith: Spring Boot 4 / Java 25 API and Angular 22 SPA behind Nginx (same-origin `/` + `/api/`).
 
-The repository is in an early foundation phase. Architecture and security decisions are documented, while many runtime controls and domain modules are still pending implementation and verification. Status should be read from `PROGRESS.md` and `QUALITY-GATES.md`.
+Session authentication (Redis), CSRF, Argon2id passwords, TOTP MFA, permission RBAC, tamper-evident audit, bilingual Persian-first UI, and Docker Compose are implemented and verified through GitHub Actions `fullstack-verify`. Status and residual gaps: `PROGRESS.md`, `QUALITY-GATES.md`, and `docs/security/asvs-5-checklist.md`.
+
+Compared with [secure-portal](https://github.com/yasamanahmadi88/secure-portal): this repository is the advanced consolidation — see `docs/comparison/secure-portal-vs-main-portal.md`.
 
 ## Technology baseline
 
@@ -56,6 +58,9 @@ npm start
 cp .env.example .env
 # edit .env — set MFA_ENCRYPTION_KEY_BASE64 (openssl rand -base64 32),
 # database passwords, GRAFANA_ADMIN_PASSWORD and Redis password.
+
+# Local host ports for Postgres/Redis/Mailpit (optional):
+# docker compose -f compose.yaml -f compose.dev.yaml --env-file .env up -d --build
 
 docker compose -f compose.yaml config -q       # validate
 docker compose -f compose.yaml up -d --build   # build + start core stack

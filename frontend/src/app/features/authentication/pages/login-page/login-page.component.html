@@ -46,10 +46,7 @@
       }
     </app-password-input>
 
-    <div class="auth-card__row">
-      <mat-checkbox formControlName="rememberDevice" color="primary">
-        {{ 'authentication.login.rememberDevice' | translate }}
-      </mat-checkbox>
+    <div class="auth-card__row auth-card__row--end">
       <a routerLink="/auth/forgot-password" class="auth-card__link">
         {{ 'authentication.login.forgot' | translate }}
       </a>
