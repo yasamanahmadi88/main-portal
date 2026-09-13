@@ -17,8 +17,8 @@ export function isValidRedirectUrl(url: string | null): boolean {
 }
 
 export function getSafeRedirectUrl(url: string | null, fallback: string = '/dashboard'): string {
-  if (isValidRedirectUrl(url)) {
-    return url;
+  if (url && isValidRedirectUrl(url)) {
+    return url as string;
   }
   return fallback;
 }

@@ -16,6 +16,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { TranslatePipe } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 export interface PasswordDialogData {
   titleKey: string;
@@ -124,5 +125,7 @@ export async function openPasswordDialog(
     PasswordDialogComponent,
     { data, width: '460px' }
   );
-  return await firstValueFrom(ref.afterClosed());
+  return await firstValueFrom(ref.afterClosed().pipe(
+    map(result => result ?? null)
+  ));
 }
