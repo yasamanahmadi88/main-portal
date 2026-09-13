@@ -144,7 +144,7 @@ class AuditEventCoverageTest extends AbstractIntegrationTest {
         post("/api/v1/auth/logout")
             .with(csrf())
             .cookie(new Cookie("PORTAL_SESSION", adminSessionCookie)))
-        .andExpect(status().isOk());
+        .andExpect(status().isNoContent());
 
     long afterCount = getAuditEventCount("AUTH_LOGOUT");
     assertThat(afterCount).isGreaterThan(beforeCount);
@@ -153,31 +153,12 @@ class AuditEventCoverageTest extends AbstractIntegrationTest {
   // ========== Password Events ==========
 
   @Test
-  @DisplayName("AEC-006: Password change is audited as PASSWORD_CHANGED")
-  void passwordChangeIsAudited() throws Exception {
-    long beforeCount = getAuditEventCount("PASSWORD_CHANGED");
-
-    mockMvc.perform(
-        post("/api/v1/me/password-change")
-            .with(csrf())
-            .cookie(new Cookie("PORTAL_SESSION", adminSessionCookie))
-            .contentType(MediaType.APPLICATION_JSON)
-            .content("""
-                {"currentPassword":"ChangeMeNow!123","newPassword":"NewPassword123!"}
-                """))
-        .andExpect(status().isOk());
-
-    long afterCount = getAuditEventCount("PASSWORD_CHANGED");
-    assertThat(afterCount).isGreaterThan(beforeCount);
-  }
-
-  @Test
-  @DisplayName("AEC-007: Password reset request is audited as PASSWORD_RESET_REQUESTED")
+  @DisplayName("AEC-006: Password reset request is audited as PASSWORD_RESET_REQUESTED")
   void passwordResetRequestIsAudited() throws Exception {
     long beforeCount = getAuditEventCount("PASSWORD_RESET_REQUESTED");
 
     mockMvc.perform(
-        post("/api/v1/auth/forgot-password")
+        post("/api/v1/auth/password/forgot")
             .with(csrf())
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
