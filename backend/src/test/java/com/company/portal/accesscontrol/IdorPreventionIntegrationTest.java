@@ -89,12 +89,12 @@ class IdorPreventionIntegrationTest extends AbstractIntegrationTest {
     // Set passwords for login (assuming test can bypass email verification)
     jdbcTemplate.update(
         "update users set password_hash = ?, email_verified = true where id = ?",
-        "$argon2id$v=19$m=65540,t=3,p=4$X0f3lkUV3S/ZoGNJ8vvVUg$bKPqKLHGlpjd/xrZxLmknQxN5pDpQRBbKKvKF5v8q9I", // "TestPassword123!"
+        "{argon2}$argon2id$v=19$m=65540,t=3,p=4$X0f3lkUV3S/ZoGNJ8vvVUg$bKPqKLHGlpjd/xrZxLmknQxN5pDpQRBbKKvKF5v8q9I", // "TestPassword123!"
         regularUserId1);
 
     jdbcTemplate.update(
         "update users set password_hash = ?, email_verified = true where id = ?",
-        "$argon2id$v=19$m=65540,t=3,p=4$X0f3lkUV3S/ZoGNJ8vvVUg$bKPqKLHGlpjd/xrZxLmknQxN5pDpQRBbKKvKF5v8q9I", // "TestPassword123!"
+        "{argon2}$argon2id$v=19$m=65540,t=3,p=4$X0f3lkUV3S/ZoGNJ8vvVUg$bKPqKLHGlpjd/xrZxLmknQxN5pDpQRBbKKvKF5v8q9I", // "TestPassword123!"
         regularUserId2);
 
     // Login all three users and capture session cookies
