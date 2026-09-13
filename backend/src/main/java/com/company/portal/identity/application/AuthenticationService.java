@@ -217,6 +217,12 @@ public class AuthenticationService {
     }
 
     public void logout(HttpServletRequest request, HttpServletResponse response) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UUID userId = null;
+        if (auth != null && auth.getPrincipal() instanceof PortalUserDetails principal) {
+            userId = principal.getUserId();
+        }
+
         SecurityContext empty = SecurityContextHolder.createEmptyContext();
         SecurityContextHolder.clearContext();
         if (request != null) {
@@ -224,6 +230,15 @@ public class AuthenticationService {
             if (request.getSession(false) != null) {
                 request.getSession(false).invalidate();
             }
+        }
+
+        if (userId != null) {
+            auditService.append(AuditContext.builder()
+                    .eventType("AUTH_LOGOUT")
+                    .category("AUTH")
+                    .severity(AuditSeverityLevel.INFO)
+                    .targetId(userId.toString())
+                    .build());
         }
     }
 

@@ -174,7 +174,7 @@ public class UserAdminService {
         user.setStatus(UserStatus.DISABLED);
         user.setUpdatedBy(actorId);
         user.setUpdatedAt(OffsetDateTime.now());
-        auditWrite(actorId, "USER_DEACTIVATED", targetId, user.getEmailNormalized());
+        auditWrite(actorId, "USER_DISABLED", targetId, user.getEmailNormalized());
         return userMapper.toDto(user);
     }
 
@@ -204,8 +204,8 @@ public class UserAdminService {
         }
         rbacService.invalidate(targetId);
         auditService.append(AuditContext.builder()
-                .eventType("USER_ROLES_REPLACED")
-                .category("RBAC")
+                .eventType("ROLE_ASSIGNED")
+                .category("AUTHORIZATION")
                 .severity(AuditSeverityLevel.NOTICE)
                 .actorType("USER").actorId(actorId)
                 .targetType("USER").targetId(targetId.toString())

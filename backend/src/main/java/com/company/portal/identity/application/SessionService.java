@@ -1,5 +1,8 @@
 package com.company.portal.identity.application;
 
+import com.company.portal.audit.api.AuditContext;
+import com.company.portal.audit.api.AuditService;
+import com.company.portal.audit.api.AuditSeverityLevel;
 import com.company.portal.identity.domain.UserSessionMetadataEntity;
 import com.company.portal.identity.repository.UserSessionMetadataRepository;
 import com.company.portal.shared.error.PortalException;
@@ -25,11 +28,14 @@ public class SessionService {
 
     private final UserSessionMetadataRepository sessionMetadata;
     private final FindByIndexNameSessionRepository<? extends Session> sessionRepository;
+    private final AuditService auditService;
 
     public SessionService(UserSessionMetadataRepository sessionMetadata,
-                          FindByIndexNameSessionRepository<? extends Session> sessionRepository) {
+                          FindByIndexNameSessionRepository<? extends Session> sessionRepository,
+                          AuditService auditService) {
         this.sessionMetadata = sessionMetadata;
         this.sessionRepository = sessionRepository;
+        this.auditService = auditService;
     }
 
     @Transactional
@@ -101,12 +107,20 @@ public class SessionService {
     }
 
     @Transactional
-    public int adminRevokeAll(UUID userId, String reason) {
+    public int adminRevokeAll(UUID actorId, UUID userId, String reason) {
         int updated = sessionMetadata.revokeAllForUser(userId, null,
                 reason == null ? "ADMIN_REVOKED" : reason, OffsetDateTime.now());
         for (UserSessionMetadataEntity s : sessionMetadata.findActiveByUserId(userId)) {
             deleteStoreSession(s.getSessionId());
         }
+        auditService.append(AuditContext.builder()
+                .eventType("SESSION_REVOKED")
+                .category("SESSION")
+                .severity(AuditSeverityLevel.NOTICE)
+                .actorType("USER").actorId(actorId)
+                .targetType("USER").targetId(userId.toString())
+                .addPayload("revokedCount", updated)
+                .build());
         return updated;
     }
 

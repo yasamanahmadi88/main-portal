@@ -118,9 +118,9 @@ class AuditEventCoverageTest extends AbstractIntegrationTest {
   }
 
   @Test
-  @DisplayName("AEC-002: Failed login is audited as AUTH_LOGIN_FAILURE")
+  @DisplayName("AEC-002: Failed login is audited as AUTH_LOGIN_FAILED")
   void failedLoginIsAudited() throws Exception {
-    long beforeCount = getAuditEventCount("AUTH_LOGIN_FAILURE");
+    long beforeCount = getAuditEventCount("AUTH_LOGIN_FAILED");
 
     mockMvc.perform(
         post("/api/v1/auth/login")
@@ -131,7 +131,7 @@ class AuditEventCoverageTest extends AbstractIntegrationTest {
                 """))
         .andExpect(status().isUnauthorized());
 
-    long afterCount = getAuditEventCount("AUTH_LOGIN_FAILURE");
+    long afterCount = getAuditEventCount("AUTH_LOGIN_FAILED");
     assertThat(afterCount).isGreaterThan(beforeCount);
   }
 
