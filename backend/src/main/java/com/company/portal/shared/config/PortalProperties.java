@@ -23,6 +23,8 @@ public class PortalProperties {
     private Security security = new Security();
     private Password password = new Password();
     private Audit audit = new Audit();
+    private Redis redis = new Redis();
+    private Monitoring monitoring = new Monitoring();
 
     public String getPublicBaseUrl() { return publicBaseUrl; }
     public void setPublicBaseUrl(String publicBaseUrl) { this.publicBaseUrl = publicBaseUrl; }
@@ -47,6 +49,12 @@ public class PortalProperties {
 
     public Audit getAudit() { return audit; }
     public void setAudit(Audit audit) { this.audit = audit; }
+
+    public Redis getRedis() { return redis; }
+    public void setRedis(Redis redis) { this.redis = redis; }
+
+    public Monitoring getMonitoring() { return monitoring; }
+    public void setMonitoring(Monitoring monitoring) { this.monitoring = monitoring; }
 
     public static class Session {
         private Duration idleTimeout = Duration.ofMinutes(30);
@@ -267,6 +275,84 @@ public class PortalProperties {
         public void setHashChainEnabled(boolean hashChainEnabled) { this.hashChainEnabled = hashChainEnabled; }
         public String getHashAlgorithm() { return hashAlgorithm; }
         public void setHashAlgorithm(String hashAlgorithm) { this.hashAlgorithm = hashAlgorithm; }
+    }
+
+    public static class Redis {
+        /**
+         * Production Redis configuration for session storage and distributed caching.
+         *
+         * SECURITY REQUIREMENTS (production):
+         *   - Bind to private network interfaces only (never 0.0.0.0)
+         *   - Require strong authentication via requirepass + ACL
+         *   - Use TLS for client connections in untrusted networks
+         *   - Configure persistence (RDB + AOF) for recovery and compliance
+         *   - Monitor memory usage and eviction policies
+         *   - Set maxmemory-policy to notify-never to prevent silent data loss
+         *
+         * See: infrastructure/redis/production-config.md
+         */
+        private boolean authenticationRequired = false;
+        private String password = "";
+        private boolean tlsEnabled = false;
+        private Persistence persistence = new Persistence();
+
+        public boolean isAuthenticationRequired() { return authenticationRequired; }
+        public void setAuthenticationRequired(boolean authenticationRequired) { this.authenticationRequired = authenticationRequired; }
+        public String getPassword() { return password; }
+        public void setPassword(String password) { this.password = password; }
+        public boolean isTlsEnabled() { return tlsEnabled; }
+        public void setTlsEnabled(boolean tlsEnabled) { this.tlsEnabled = tlsEnabled; }
+        public Persistence getPersistence() { return persistence; }
+        public void setPersistence(Persistence persistence) { this.persistence = persistence; }
+    }
+
+    public static class Persistence {
+        /**
+         * Redis persistence strategy.
+         *
+         * RDB (snapshotting): point-in-time backup, fast startup, higher data loss risk
+         * AOF (append-only file): continuous append log, lower data loss risk, larger disk
+         *
+         * PRODUCTION: enable both for maximum durability:
+         *   save 900 1      (at least 1 key changed after 900 sec)
+         *   save 300 10     (at least 10 keys changed after 300 sec)
+         *   save 60 10000   (at least 10000 keys changed after 60 sec)
+         *   appendonly yes
+         *   appendfsync everysec  (fsync once per second, balance durability vs performance)
+         */
+        private boolean rdbEnabled = true;
+        private boolean aofEnabled = false;
+        private String rdbSchedule = "900 1, 300 10, 60 10000";
+
+        public boolean isRdbEnabled() { return rdbEnabled; }
+        public void setRdbEnabled(boolean rdbEnabled) { this.rdbEnabled = rdbEnabled; }
+        public boolean isAofEnabled() { return aofEnabled; }
+        public void setAofEnabled(boolean aofEnabled) { this.aofEnabled = aofEnabled; }
+        public String getRdbSchedule() { return rdbSchedule; }
+        public void setRdbSchedule(String rdbSchedule) { this.rdbSchedule = rdbSchedule; }
+    }
+
+    public static class Monitoring {
+        /**
+         * Prometheus metrics and alerting configuration for production observability.
+         *
+         * REQUIRED ALERTS (document these in your alert rule definitions):
+         *   1. login_failures_spike: Failed login attempts exceed threshold (rate > 5/min)
+         *   2. account_lockouts_spike: Account lockouts spike (rate > 2/min)
+         *   3. audit_persistence_failures: Audit events fail to write to database
+         *   4. redis_unavailable: Redis connection pool exhausted or unhealthy
+         *   5. postgres_connection_exhaustion: Database connection pool > 90%
+         *   6. audit_chain_verification_mismatch: Hash chain verification fails
+         *
+         * Metrics are exposed on /actuator/prometheus (private network only).
+         */
+        private boolean prometheusEnabled = true;
+        private String metricsPath = "/actuator/prometheus";
+
+        public boolean isPrometheusEnabled() { return prometheusEnabled; }
+        public void setPrometheusEnabled(boolean prometheusEnabled) { this.prometheusEnabled = prometheusEnabled; }
+        public String getMetricsPath() { return metricsPath; }
+        public void setMetricsPath(String metricsPath) { this.metricsPath = metricsPath; }
     }
 
     public String normalizeEmail(String email) {

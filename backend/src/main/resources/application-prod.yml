@@ -41,3 +41,29 @@ portal:
       path: /
   security:
     hsts-max-age-seconds: 63072000
+  redis:
+    # Production Redis configuration requires authentication and persistence
+    # ENVIRONMENT VARS (from secret manager):
+    #   REDIS_PASSWORD: strong password for requirepass
+    #   REDIS_HOST: private IP of Redis server (never 0.0.0.0)
+    # See: application.yml and RedisConfig for Spring client setup
+    authentication-required: true
+    tls-enabled: false
+    persistence:
+      rdb-enabled: true
+      aof-enabled: true
+      rdb-schedule: "900 1, 300 10, 60 10000"
+  monitoring:
+    prometheus-enabled: true
+    metrics-path: /actuator/prometheus
+
+# Production Redis server configuration (deploy to infrastructure/redis/production-config.conf)
+# bind 10.0.0.5 (private network only)
+# requirepass ${REDIS_PASSWORD}
+# maxmemory 512mb
+# maxmemory-policy allkeys-lru
+# save 900 1
+# save 300 10
+# save 60 10000
+# appendonly yes
+# appendfsync everysec
