@@ -8,7 +8,10 @@ import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.stereotype.Service;
+
+import java.util.Optional;
 
 /**
  * Production metrics service for security monitoring and alerting.
@@ -57,6 +60,7 @@ import org.springframework.stereotype.Service;
  */
 @Service
 @ConditionalOnBean(MeterRegistry.class)
+@ConditionalOnClass(MeterRegistry.class)
 public class PrometheusMetricsService {
     private static final Logger logger = LoggerFactory.getLogger(PrometheusMetricsService.class);
 
@@ -72,50 +76,70 @@ public class PrometheusMetricsService {
     private final Timer auditWriteTimer;
     private final Timer databaseConnectionTimer;
 
-    public PrometheusMetricsService(MeterRegistry meterRegistry) {
-        this.meterRegistry = meterRegistry;
+    /**
+     * Constructor accepts Optional<MeterRegistry> to allow graceful degradation
+     * when metrics are not configured. When MeterRegistry is not available,
+     * all recording methods become no-ops to prevent NullPointerException.
+     */
+    public PrometheusMetricsService(Optional<MeterRegistry> meterRegistry) {
+        this.meterRegistry = meterRegistry.orElse(null);
 
-        // Security event counters (production alerting triggers)
-        Tags baseTags = Tags.of("service", "portal");
+        if (meterRegistry.isPresent()) {
+            // Security event counters (production alerting triggers)
+            Tags baseTags = Tags.of("service", "portal");
+            MeterRegistry registry = meterRegistry.get();
 
-        this.loginFailuresCounter = Counter.builder("portal_login_failures_total")
-            .description("Total failed login attempts")
-            .tags(baseTags)
-            .register(meterRegistry);
+            this.loginFailuresCounter = Counter.builder("portal_login_failures_total")
+                .description("Total failed login attempts")
+                .tags(baseTags)
+                .register(registry);
 
-        this.accountLockoutsCounter = Counter.builder("portal_account_lockouts_total")
-            .description("Total account lockouts due to failed login attempts")
-            .tags(baseTags)
-            .register(meterRegistry);
+            this.accountLockoutsCounter = Counter.builder("portal_account_lockouts_total")
+                .description("Total account lockouts due to failed login attempts")
+                .tags(baseTags)
+                .register(registry);
 
-        this.auditWriteFailuresCounter = Counter.builder("portal_audit_write_failures_total")
-            .description("Failed attempts to write audit events to database (CRITICAL alert trigger)")
-            .tags(baseTags)
-            .register(meterRegistry);
+            this.auditWriteFailuresCounter = Counter.builder("portal_audit_write_failures_total")
+                .description("Failed attempts to write audit events to database (CRITICAL alert trigger)")
+                .tags(baseTags)
+                .register(registry);
 
-        this.auditChainVerificationFailuresCounter = Counter.builder("portal_audit_chain_verification_failures_total")
-            .description("Hash chain verification failures (tampering detection)")
-            .tags(baseTags)
-            .register(meterRegistry);
+            this.auditChainVerificationFailuresCounter = Counter.builder("portal_audit_chain_verification_failures_total")
+                .description("Hash chain verification failures (tampering detection)")
+                .tags(baseTags)
+                .register(registry);
 
-        // Performance monitoring
-        this.auditWriteTimer = Timer.builder("portal_audit_write_duration_seconds")
-            .description("Time to persist audit events to database")
-            .tags(baseTags)
-            .register(meterRegistry);
+            // Performance monitoring
+            this.auditWriteTimer = Timer.builder("portal_audit_write_duration_seconds")
+                .description("Time to persist audit events to database")
+                .tags(baseTags)
+                .register(registry);
 
-        this.databaseConnectionTimer = Timer.builder("portal_database_connection_duration_seconds")
-            .description("Time to obtain database connection from pool")
-            .tags(baseTags)
-            .register(meterRegistry);
+            this.databaseConnectionTimer = Timer.builder("portal_database_connection_duration_seconds")
+                .description("Time to obtain database connection from pool")
+                .tags(baseTags)
+                .register(registry);
+        } else {
+            // No-op initialization when MeterRegistry is not available
+            // (e.g., in test environments without metrics autoconfiguration)
+            this.loginFailuresCounter = null;
+            this.accountLockoutsCounter = null;
+            this.auditWriteFailuresCounter = null;
+            this.auditChainVerificationFailuresCounter = null;
+            this.auditWriteTimer = null;
+            this.databaseConnectionTimer = null;
+        }
     }
 
     /**
      * Record a failed login attempt.
      * Alert if rate exceeds threshold (5/min) to detect brute-force attacks.
+     * No-op if MeterRegistry is not available.
      */
     public void recordLoginFailure(String reason) {
-        loginFailuresCounter.increment();
+        if (loginFailuresCounter != null) {
+            loginFailuresCounter.increment();
+        }
         logger.warn("Login failure recorded: {}", reason,
             new SecurityEventMarker("LOGIN_FAILURE", reason));
     }
@@ -123,9 +147,12 @@ public class PrometheusMetricsService {
     /**
      * Record an account lockout.
      * Alert if rate exceeds threshold (2/min) to detect distributed attacks.
+     * No-op if MeterRegistry is not available.
      */
     public void recordAccountLockout(String userId, String reason) {
-        accountLockoutsCounter.increment();
+        if (accountLockoutsCounter != null) {
+            accountLockoutsCounter.increment();
+        }
         logger.warn("Account lockout recorded for user {}: {}",
             userId, reason,
             new SecurityEventMarker("ACCOUNT_LOCKOUT", userId));
@@ -135,9 +162,12 @@ public class PrometheusMetricsService {
      * Record a failure to persist audit events.
      * CRITICAL: This indicates the audit trail is compromised.
      * Alert immediately on any occurrence.
+     * No-op metrics if MeterRegistry is not available.
      */
     public void recordAuditWriteFailure(String table, Exception cause) {
-        auditWriteFailuresCounter.increment();
+        if (auditWriteFailuresCounter != null) {
+            auditWriteFailuresCounter.increment();
+        }
         logger.error("CRITICAL: Failed to write audit event to table {}: {}",
             table, cause.getMessage(), cause,
             new SecurityEventMarker("AUDIT_WRITE_FAILURE", table));
@@ -147,9 +177,12 @@ public class PrometheusMetricsService {
      * Record a hash chain verification failure.
      * This indicates the audit trail may have been tampered with.
      * Alert immediately for forensics investigation.
+     * No-op metrics if MeterRegistry is not available.
      */
     public void recordAuditChainVerificationFailure(long eventId, String reason) {
-        auditChainVerificationFailuresCounter.increment();
+        if (auditChainVerificationFailuresCounter != null) {
+            auditChainVerificationFailuresCounter.increment();
+        }
         logger.error("CRITICAL: Audit chain verification failed for event {}: {}",
             eventId, reason,
             new SecurityEventMarker("AUDIT_CHAIN_MISMATCH", String.valueOf(eventId)));
@@ -158,31 +191,40 @@ public class PrometheusMetricsService {
     /**
      * Record audit event write performance.
      * High latency may indicate database bottlenecks or connection pool exhaustion.
+     * No-op if MeterRegistry is not available.
      */
     public void recordAuditWriteDuration(long durationNanos) {
-        auditWriteTimer.record(durationNanos, java.util.concurrent.TimeUnit.NANOSECONDS);
+        if (auditWriteTimer != null) {
+            auditWriteTimer.record(durationNanos, java.util.concurrent.TimeUnit.NANOSECONDS);
+        }
     }
 
     /**
      * Record database connection acquisition time.
      * High values indicate connection pool contention.
+     * No-op if MeterRegistry is not available.
      */
     public void recordDatabaseConnectionDuration(long durationNanos) {
-        databaseConnectionTimer.record(durationNanos, java.util.concurrent.TimeUnit.NANOSECONDS);
+        if (databaseConnectionTimer != null) {
+            databaseConnectionTimer.record(durationNanos, java.util.concurrent.TimeUnit.NANOSECONDS);
+        }
     }
 
     /**
      * Gauge: Current Redis connection pool status.
      * If this reaches 0 (disconnected), it indicates session storage is unavailable.
      * Must be called periodically from a health check.
+     * No-op if MeterRegistry is not available.
      */
     public void recordRedisConnectionPoolStatus(int activeConnections, int maxConnections) {
-        meterRegistry.gauge("portal_redis_pool_active_connections",
-            Tags.of("service", "portal"),
-            activeConnections);
-        meterRegistry.gauge("portal_redis_pool_max_connections",
-            Tags.of("service", "portal"),
-            maxConnections);
+        if (meterRegistry != null) {
+            meterRegistry.gauge("portal_redis_pool_active_connections",
+                Tags.of("service", "portal"),
+                activeConnections);
+            meterRegistry.gauge("portal_redis_pool_max_connections",
+                Tags.of("service", "portal"),
+                maxConnections);
+        }
     }
 
     /**
