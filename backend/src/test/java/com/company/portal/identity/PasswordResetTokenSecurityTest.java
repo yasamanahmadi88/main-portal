@@ -27,6 +27,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Password Reset Token Security Test Suite.
@@ -43,6 +44,7 @@ import org.springframework.test.web.servlet.MockMvc;
     value = "com.company.portal.support.DockerAvailability#isAvailable",
     disabledReason = "Docker unavailable for Testcontainers")
 @AutoConfigureMockMvc
+@Transactional
 class PasswordResetTokenSecurityTest extends AbstractIntegrationTest {
 
   @Autowired private MockMvc mockMvc;

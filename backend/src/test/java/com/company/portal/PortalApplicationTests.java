@@ -2,6 +2,7 @@ package com.company.portal;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
+import org.springframework.transaction.annotation.Transactional;
 import com.company.portal.support.AbstractIntegrationTest;
 
 /**
@@ -12,6 +13,7 @@ import com.company.portal.support.AbstractIntegrationTest;
  */
 @EnabledIf(value = "com.company.portal.support.DockerAvailability#isAvailable",
         disabledReason = "Docker is not available in this environment.")
+@Transactional
 class PortalApplicationTests extends AbstractIntegrationTest {
 
     @Test
