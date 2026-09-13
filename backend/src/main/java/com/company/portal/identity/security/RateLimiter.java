@@ -47,8 +47,8 @@ public class RateLimiter {
             boolean allowed = current <= policy.getCapacity();
             return new Decision(allowed, current, policy.getCapacity(), retry);
         } catch (RuntimeException e) {
-            log.debug("Rate limiter unavailable ({}) — failing open", e.getMessage());
-            return new Decision(true, 0, policy.getCapacity(), 0);
+            log.warn("Rate limiter unavailable ({}) — failing closed", e.getMessage());
+            return new Decision(false, policy.getCapacity(), policy.getCapacity(), 60);
         }
     }
 

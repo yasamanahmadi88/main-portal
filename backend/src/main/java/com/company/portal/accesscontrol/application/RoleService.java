@@ -48,7 +48,7 @@ public class RoleService {
 
     @Transactional(readOnly = true)
     public Page<RoleDto> list(Pageable pageable) {
-        return roles.findAll(pageable).map(this::toDto);
+        return roles.findAllWithPermissions(pageable).map(this::toDto);
     }
 
     @Transactional(readOnly = true)
@@ -131,7 +131,11 @@ public class RoleService {
     }
 
     private RoleEntity mustLoad(UUID id) {
-        return roles.findById(id).orElseThrow(() -> new PortalException.NotFound("Role not found"));
+        List<RoleEntity> result = roles.findAllByIdWithPermissions(List.of(id));
+        if (result.isEmpty()) {
+            throw new PortalException.NotFound("Role not found");
+        }
+        return result.get(0);
     }
 
     private void auditRoleWrite(UUID actorId, String eventType, RoleEntity role) {
@@ -151,12 +155,11 @@ public class RoleService {
 
     @Transactional(readOnly = true)
     public RoleDto toDto(RoleEntity r) {
-        RoleEntity managed = roles.findById(r.getId()).orElse(r);
         return new RoleDto(
-                managed.getId(), managed.getCode(), managed.getName(), managed.getDescription(),
-                managed.isSystemRole(),
-                managed.getPermissions().stream().map(RoleService::toPermissionDto).toList(),
-                managed.getCreatedAt(), managed.getUpdatedAt());
+                r.getId(), r.getCode(), r.getName(), r.getDescription(),
+                r.isSystemRole(),
+                r.getPermissions().stream().map(RoleService::toPermissionDto).toList(),
+                r.getCreatedAt(), r.getUpdatedAt());
     }
 
     public static PermissionDto toPermissionDto(PermissionEntity p) {

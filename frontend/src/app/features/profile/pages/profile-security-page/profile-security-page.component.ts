@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import {
   AbstractControl,
   FormBuilder,
@@ -6,6 +6,7 @@ import {
   ValidationErrors,
   Validators
 } from '@angular/forms';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { firstValueFrom } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -19,7 +20,8 @@ import { ToastService } from '@core/observability/toast.service';
 import {
   PasswordInputComponent,
   StatusBadgeComponent,
-  openConfirmDialog
+  openConfirmDialog,
+  openPasswordDialog
 } from '@shared/ui';
 import type {
   MfaEnrollmentResult,
@@ -58,13 +60,19 @@ export class ProfileSecurityPageComponent {
   private readonly me = inject(MeApi);
   private readonly toast = inject(ToastService);
   private readonly dialog = inject(MatDialog);
+  private readonly sanitizer = inject(DomSanitizer);
 
   readonly changingPassword = signal(false);
   readonly enrollingMfa = signal(false);
   readonly confirmingMfa = signal(false);
   readonly factors = signal<MfaFactor[]>([]);
   readonly recoveryStatus = signal<RecoveryCodeStatus | null>(null);
-  readonly setup = signal<MfaSetup | null>(null);
+  private readonly _setup = signal<MfaSetup | null>(null);
+  readonly setup = this._setup.asReadonly();
+  readonly qrCodeSvg = computed(() => {
+    const s = this._setup();
+    return s?.qrCodeSvg ? this.sanitizer.bypassSecurityTrustHtml(s.qrCodeSvg) : null;
+  });
   readonly newRecoveryCodes = signal<string[] | null>(null);
 
   readonly passwordForm = this.fb.nonNullable.group({
@@ -107,7 +115,7 @@ export class ProfileSecurityPageComponent {
     this.enrollingMfa.set(true);
     try {
       const setup = await firstValueFrom(this.me.setupTotp('Authenticator'));
-      this.setup.set(setup);
+      this._setup.set(setup);
     } finally {
       this.enrollingMfa.set(false);
     }
@@ -125,7 +133,7 @@ export class ProfileSecurityPageComponent {
         })
       );
       this.newRecoveryCodes.set(result.recoveryCodes);
-      this.setup.set(null);
+      this._setup.set(null);
       this.confirmForm.reset();
       this.toast.success('profile.security.enrollmentSuccess');
       await this.refresh();
@@ -141,14 +149,20 @@ export class ProfileSecurityPageComponent {
       tone: 'danger'
     });
     if (!ok) return;
-    const password = prompt('Confirm your password');
+    const password = await openPasswordDialog(this.dialog, {
+      titleKey: 'profile.security.confirmPasswordTitle',
+      messageKey: 'profile.security.confirmPasswordMessage'
+    });
     if (!password) return;
     await firstValueFrom(this.me.deleteMfaFactor(factor.id, { password }));
     await this.refresh();
   }
 
   async regenerateRecoveryCodes(): Promise<void> {
-    const password = prompt('Confirm your password');
+    const password = await openPasswordDialog(this.dialog, {
+      titleKey: 'profile.security.confirmPasswordTitle',
+      messageKey: 'profile.security.confirmPasswordMessage'
+    });
     if (!password) return;
     const result = await firstValueFrom(this.me.regenerateRecoveryCodes({ password }));
     this.newRecoveryCodes.set(result.recoveryCodes);
