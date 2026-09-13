@@ -38,3 +38,21 @@ portal:
       active-key-id: test-key-1
       keys:
         test-key-1: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+  rate-limit:
+    # Disable rate limiting for tests to allow repeated login attempts
+    login:
+      capacity: 10000
+      refill-tokens: 10000
+      refill-period: 1m
+    password-reset:
+      capacity: 10000
+      refill-tokens: 10000
+      refill-period: 15m
+    mfa-verify:
+      capacity: 10000
+      refill-tokens: 10000
+      refill-period: 5m
+    global-api:
+      capacity: 10000
+      refill-tokens: 10000
+      refill-period: 1m
