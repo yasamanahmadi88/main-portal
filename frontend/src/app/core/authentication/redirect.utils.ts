@@ -16,7 +16,7 @@ export function isValidRedirectUrl(url: string | null): boolean {
   return SAFE_REDIRECT_PATHS.some(path => url === path || url.startsWith(path + '/'));
 }
 
-export function getSafeRedirectUrl(url: string | null, fallback: string = '/dashboard'): string {
+export function getSafeRedirectUrl(url: string | null, fallback = '/dashboard'): string {
   if (url && isValidRedirectUrl(url)) {
     return url as string;
   }
