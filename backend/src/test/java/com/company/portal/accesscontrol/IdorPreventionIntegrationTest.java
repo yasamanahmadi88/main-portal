@@ -23,6 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -52,6 +53,7 @@ class IdorPreventionIntegrationTest extends AbstractIntegrationTest {
   @Autowired private MockMvc mockMvc;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private UserAdminService userAdminService;
+  @Autowired private PasswordEncoder passwordEncoder;
 
   private UUID adminUserId;
   private UUID regularUserId1;
@@ -87,14 +89,17 @@ class IdorPreventionIntegrationTest extends AbstractIntegrationTest {
         .id();
 
     // Set passwords for login (assuming test can bypass email verification)
+    String testPassword = "TestPassword123!";
+    String encodedPassword = passwordEncoder.encode(testPassword);
+
     jdbcTemplate.update(
         "update users set password_hash = ?, email_verified = true where id = ?",
-        "{argon2}$argon2id$v=19$m=65540,t=3,p=4$X0f3lkUV3S/ZoGNJ8vvVUg$bKPqKLHGlpjd/xrZxLmknQxN5pDpQRBbKKvKF5v8q9I", // "TestPassword123!"
+        encodedPassword,
         regularUserId1);
 
     jdbcTemplate.update(
         "update users set password_hash = ?, email_verified = true where id = ?",
-        "{argon2}$argon2id$v=19$m=65540,t=3,p=4$X0f3lkUV3S/ZoGNJ8vvVUg$bKPqKLHGlpjd/xrZxLmknQxN5pDpQRBbKKvKF5v8q9I", // "TestPassword123!"
+        encodedPassword,
         regularUserId2);
 
     // Login all three users and capture session cookies
