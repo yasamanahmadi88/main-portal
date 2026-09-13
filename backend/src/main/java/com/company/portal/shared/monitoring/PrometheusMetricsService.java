@@ -7,8 +7,6 @@ import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -58,9 +56,12 @@ import java.util.Optional;
  *
  * @see https://micrometer.io/docs/registry/prometheus
  */
+/**
+ * Registered as a service in all profiles. Gracefully degrades to no-op
+ * if MeterRegistry is not available (e.g., test environments without metrics).
+ * Uses Optional<MeterRegistry> to avoid Spring autowiring failures.
+ */
 @Service
-@ConditionalOnBean(MeterRegistry.class)
-@ConditionalOnClass(MeterRegistry.class)
 public class PrometheusMetricsService {
     private static final Logger logger = LoggerFactory.getLogger(PrometheusMetricsService.class);
 
