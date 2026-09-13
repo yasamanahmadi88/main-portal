@@ -7,6 +7,7 @@ import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.stereotype.Service;
 
 /**
@@ -55,6 +56,7 @@ import org.springframework.stereotype.Service;
  * @see https://micrometer.io/docs/registry/prometheus
  */
 @Service
+@ConditionalOnClass(MeterRegistry.class)
 public class PrometheusMetricsService {
     private static final Logger logger = LoggerFactory.getLogger(PrometheusMetricsService.class);
 
