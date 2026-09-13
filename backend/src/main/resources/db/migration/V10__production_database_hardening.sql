@@ -74,29 +74,49 @@ END;
 $$;
 
 -- Schema and table documentation for production operations
-COMMENT ON SCHEMA public IS
-  'Application schema. Owned by portal_migration; runtime role (portal_app) has limited DML.';
+DO $$
+BEGIN
+    COMMENT ON SCHEMA public IS
+      'Application schema. Owned by portal_migration; runtime role (portal_app) has limited DML.';
 
-COMMENT ON TABLE users IS
-  'Authoritative user directory (ASVS V8.5: User Account Control). Runtime role: SELECT, INSERT, UPDATE, DELETE (standard CRUD).';
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'users') THEN
+        COMMENT ON TABLE users IS
+          'Authoritative user directory (ASVS V8.5: User Account Control). Runtime role: SELECT, INSERT, UPDATE, DELETE (standard CRUD).';
+    END IF;
 
-COMMENT ON TABLE audit_events IS
-  'Append-only audit log (ASVS V8.4: Session Tracking; ASVS V8.5: Privilege Changes). Runtime role: SELECT, INSERT ONLY. Immutable after creation to prevent attack cover-up.';
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'audit_events') THEN
+        COMMENT ON TABLE audit_events IS
+          'Append-only audit log (ASVS V8.4: Session Tracking; ASVS V8.5: Privilege Changes). Runtime role: SELECT, INSERT ONLY. Immutable after creation to prevent attack cover-up.';
+    END IF;
 
-COMMENT ON TABLE audit_event_chain IS
-  'Hash chain metadata for append-only verification (ASVS V8.4). Runtime role: SELECT, INSERT ONLY. Links sequential audit events to detect tampering.';
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'audit_event_chain') THEN
+        COMMENT ON TABLE audit_event_chain IS
+          'Hash chain metadata for append-only verification (ASVS V8.4). Runtime role: SELECT, INSERT ONLY. Links sequential audit events to detect tampering.';
+    END IF;
 
-COMMENT ON TABLE security_events IS
-  'High-risk security events (login failures, lockouts, privilege changes). Runtime role: standard DML.';
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'security_events') THEN
+        COMMENT ON TABLE security_events IS
+          'High-risk security events (login failures, lockouts, privilege changes). Runtime role: standard DML.';
+    END IF;
 
-COMMENT ON TABLE mfa_credentials IS
-  'MFA secrets encrypted with reference to encryption_key_metadata. Runtime role: standard DML.';
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'mfa_credentials') THEN
+        COMMENT ON TABLE mfa_credentials IS
+          'MFA secrets encrypted with reference to encryption_key_metadata. Runtime role: standard DML.';
+    END IF;
 
-COMMENT ON TABLE sessions IS
-  'User session records for concurrent session limits and timeout enforcement (ASVS V8.4). Runtime role: standard DML.';
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'sessions') THEN
+        COMMENT ON TABLE sessions IS
+          'User session records for concurrent session limits and timeout enforcement (ASVS V8.4). Runtime role: standard DML.';
+    END IF;
 
-COMMENT ON TABLE encryption_key_metadata IS
-  'References to encryption keys; actual key material stored in external KMS. Runtime role: standard DML.';
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'encryption_key_metadata') THEN
+        COMMENT ON TABLE encryption_key_metadata IS
+          'References to encryption keys; actual key material stored in external KMS. Runtime role: standard DML.';
+    END IF;
 
-COMMENT ON TABLE outbox_events IS
-  'Transactional outbox pattern for reliable event publishing. Runtime role: standard DML. Consumed by outbox relay.';
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'outbox_events') THEN
+        COMMENT ON TABLE outbox_events IS
+          'Transactional outbox pattern for reliable event publishing. Runtime role: standard DML. Consumed by outbox relay.';
+    END IF;
+END;
+$$;
