@@ -223,14 +223,8 @@ public class AuthenticationService {
             userId = principal.getUserId();
         }
 
-        SecurityContext empty = SecurityContextHolder.createEmptyContext();
-        SecurityContextHolder.clearContext();
-        if (request != null) {
-            securityContextRepository.saveContext(empty, request, response);
-            if (request.getSession(false) != null) {
-                request.getSession(false).invalidate();
-            }
-        }
+        String ip = request != null ? RequestContext.clientIp(request) : null;
+        String ua = request != null ? RequestContext.userAgent(request) : null;
 
         if (userId != null) {
             auditService.append(AuditContext.builder()
@@ -239,7 +233,18 @@ public class AuthenticationService {
                     .severity(AuditSeverityLevel.INFO)
                     .actorType("USER").actorId(userId)
                     .targetType("USER").targetId(userId.toString())
+                    .ipAddress(ip).userAgent(ua)
+                    .correlationId(RequestContext.correlationId())
                     .build());
+        }
+
+        SecurityContext empty = SecurityContextHolder.createEmptyContext();
+        SecurityContextHolder.clearContext();
+        if (request != null) {
+            securityContextRepository.saveContext(empty, request, response);
+            if (request.getSession(false) != null) {
+                request.getSession(false).invalidate();
+            }
         }
     }
 
