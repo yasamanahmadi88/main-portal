@@ -13,8 +13,9 @@
 -- The runtime role ('portal_app') has minimal necessary privileges:
 --   * SELECT on all tables (read application data)
 --   * INSERT on mutable tables (create new records)
---   * UPDATE/DELETE on mutable tables EXCEPT audit tables (modify user data)
---   * APPEND-ONLY on audit_events and audit_event_chain (compliance requirement)
+--   * UPDATE/DELETE on mutable tables EXCEPT audit_events (modify user data)
+--   * APPEND-ONLY on audit_events (immutable event log, compliance requirement)
+--   * SELECT/INSERT/UPDATE on audit_event_chain (chain cursor for hash chain integrity)
 --
 -- Audit tables are append-only: once written, they can never be modified or deleted.
 -- This prevents attackers from covering tracks if the application layer is compromised.
@@ -57,9 +58,11 @@ BEGIN
         EXECUTE format('REVOKE ALL ON TABLE audit_events FROM %I', v_app_role);
         EXECUTE format('REVOKE ALL ON TABLE audit_event_chain FROM %I', v_app_role);
 
-        -- Grant SELECT + INSERT only (append-only)
+        -- Grant SELECT + INSERT only for audit_events (append-only)
         EXECUTE format('GRANT SELECT, INSERT ON TABLE audit_events TO %I', v_app_role);
-        EXECUTE format('GRANT SELECT, INSERT ON TABLE audit_event_chain TO %I', v_app_role);
+
+        -- Grant SELECT, INSERT, UPDATE for audit_event_chain (chain cursor update needed for hash integrity)
+        EXECUTE format('GRANT SELECT, INSERT, UPDATE ON TABLE audit_event_chain TO %I', v_app_role);
 
         -- Grants on sequences for audit tables
         IF EXISTS (SELECT 1 FROM information_schema.sequences WHERE sequence_name = 'audit_events_id_seq') THEN
@@ -93,7 +96,7 @@ BEGIN
 
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'audit_event_chain') THEN
         EXECUTE 'COMMENT ON TABLE audit_event_chain IS ' ||
-          quote_literal('Hash chain metadata for append-only verification (ASVS V8.4). Runtime role: SELECT, INSERT ONLY. Links sequential audit events to detect tampering.');
+          quote_literal('Hash chain metadata for append-only verification (ASVS V8.4). Runtime role: SELECT, INSERT, UPDATE. Tracks last hash and sequence for chain integrity; individual events remain immutable.');
     END IF;
 
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'security_events') THEN
