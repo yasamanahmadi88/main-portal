@@ -108,7 +108,7 @@ public class UserAdminService {
         }
         rbacService.invalidate(userId);
 
-        auditService.append(AuditContext.builder()
+        safeAppendAudit(AuditContext.builder()
                 .eventType("USER_CREATED")
                 .category("USER_ADMIN")
                 .severity(AuditSeverityLevel.NOTICE)
@@ -245,6 +245,16 @@ public class UserAdminService {
             case "LOCKED" -> user.setStatus(UserStatus.LOCKED);
             case "PENDING" -> user.setStatus(UserStatus.PENDING_VERIFICATION);
             default -> throw new PortalException.Validation("Unknown status: " + apiStatus);
+        }
+    }
+
+    private void safeAppendAudit(AuditContext context) {
+        try {
+            auditService.append(context);
+        } catch (RuntimeException e) {
+            // Audit append failures should not block user operations. Log for diagnostics.
+            org.slf4j.LoggerFactory.getLogger(getClass())
+                    .error("Audit append failed for {}: {}", context.eventType(), e.getMessage(), e);
         }
     }
 }
