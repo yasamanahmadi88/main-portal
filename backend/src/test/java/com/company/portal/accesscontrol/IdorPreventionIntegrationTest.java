@@ -47,7 +47,6 @@ import org.springframework.transaction.annotation.Transactional;
     value = "com.company.portal.support.DockerAvailability#isAvailable",
     disabledReason = "Docker unavailable for Testcontainers")
 @AutoConfigureMockMvc
-@Transactional
 class IdorPreventionIntegrationTest extends AbstractIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
