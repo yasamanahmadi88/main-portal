@@ -232,6 +232,7 @@ public class AuthenticationService {
                     .eventType("AUTH_LOGOUT")
                     .category("AUTH")
                     .severity(AuditSeverityLevel.INFO)
+                    .outcome(AuditOutcome.SUCCESS)
                     .actorType("USER").actorId(userId)
                     .targetType("USER").targetId(userId.toString())
                     .ipAddress(ip).userAgent(ua)
