@@ -25,14 +25,14 @@ env:
   # Well-known version tags are used for readability.  Pinning to a
   # 40-char commit SHA is strictly preferable and should be done via
   # a Renovate/Dependabot policy — see docs/operations/ci-actions.md.
-  JAVA_VERSION: "25"
+  JAVA_VERSION: "21"
   NODE_VERSION: "24.15.0"
   # Force UTF-8 in the JVM/Maven output so log parsing stays sane.
   MAVEN_OPTS: "-Xmx1500m -Dfile.encoding=UTF-8 -Djava.awt.headless=true"
 
 jobs:
   # ================================================================
-  #  Backend — Spring Boot 4 (Java 25).  Runs unit + integration
+  #  Backend — Spring Boot 4 (Java 21).  Runs unit + integration
   #  tests via `./mvnw verify`.  Testcontainers spins up Postgres +
   #  Redis inside the runner's Docker daemon, so we do NOT declare
   #  `services:` here; that keeps the exact same test path used
@@ -49,7 +49,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        java: ["25"]
+        java: ["21"]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
