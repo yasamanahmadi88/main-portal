@@ -203,7 +203,7 @@ public class UserAdminService {
             userRoles.save(new UserRoleEntity(targetId, role.getId(), actorId));
         }
         rbacService.invalidate(targetId);
-        auditService.append(AuditContext.builder()
+        safeAppendAudit(AuditContext.builder()
                 .eventType("ROLE_ASSIGNED")
                 .category("AUTHORIZATION")
                 .severity(AuditSeverityLevel.NOTICE)
@@ -228,7 +228,7 @@ public class UserAdminService {
     }
 
     private void auditWrite(UUID actorId, String eventType, UUID targetId, String display) {
-        auditService.append(AuditContext.builder()
+        safeAppendAudit(AuditContext.builder()
                 .eventType(eventType)
                 .category("USER_ADMIN")
                 .severity(AuditSeverityLevel.NOTICE)
