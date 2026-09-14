@@ -216,6 +216,7 @@ public class AuthenticationService {
         return user;
     }
 
+    @Transactional
     public void logout(HttpServletRequest request, HttpServletResponse response) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         UUID userId = null;
