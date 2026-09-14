@@ -8,7 +8,9 @@ BASE_URL="${BASE_URL:-http://localhost:8080}"
 ADMIN_EMAIL="${ADMIN_EMAIL:?ADMIN_EMAIL required}"
 ADMIN_PASSWORD="${ADMIN_PASSWORD:?ADMIN_PASSWORD required}"
 COOKIE_JAR="$(mktemp)"
+export COOKIE_JAR
 REPORT_DIR="${REPORT_DIR:-/tmp/portal-live-evidence}"
+export REPORT_DIR
 mkdir -p "$REPORT_DIR"
 EVIDENCE="$REPORT_DIR/api-verification.txt"
 : > "$EVIDENCE"
