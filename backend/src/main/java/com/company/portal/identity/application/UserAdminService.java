@@ -210,7 +210,7 @@ public class UserAdminService {
                 .actorType("USER").actorId(actorId)
                 .targetType("USER").targetId(targetId.toString())
                 .targetDisplay(user.getEmailNormalized())
-                .addPayload("roleIds", roleIds)
+                .addPayload("roleIds", roleIds.stream().map(UUID::toString).toList())
                 .build());
         return rbacService.rolesOf(targetId).stream()
                 .map(r -> new RoleDto(r.getId(), r.getCode(), r.getName(), r.getDescription(),

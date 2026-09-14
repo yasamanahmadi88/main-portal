@@ -237,7 +237,8 @@ public class AuthenticationService {
                     .eventType("AUTH_LOGOUT")
                     .category("AUTH")
                     .severity(AuditSeverityLevel.INFO)
-                    .targetId(userId.toString())
+                    .actorType("USER").actorId(userId)
+                    .targetType("USER").targetId(userId.toString())
                     .build());
         }
     }
