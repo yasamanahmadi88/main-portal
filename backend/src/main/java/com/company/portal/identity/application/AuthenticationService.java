@@ -152,7 +152,7 @@ public class AuthenticationService {
 
         if (user.isMfaEnabled()) {
             recordAttempt(user.getId(), emailNormalized, ip, ua, "REQUIRES_MFA", null, true, false);
-            auditService.append(AuditContext.builder()
+            safeAppendAudit(AuditContext.builder()
                     .eventType("AUTH_MFA_CHALLENGE_ISSUED")
                     .category("AUTH")
                     .severity(AuditSeverityLevel.INFO)
@@ -167,7 +167,7 @@ public class AuthenticationService {
 
         establishAuthenticatedSession(user, request, response, ip, ua, false);
         recordAttempt(user.getId(), emailNormalized, ip, ua, "SUCCESS", null, false, false);
-        auditService.append(AuditContext.builder()
+        safeAppendAudit(AuditContext.builder()
                 .eventType("AUTH_LOGIN_SUCCESS")
                 .category("AUTH")
                 .severity(AuditSeverityLevel.NOTICE)
@@ -204,7 +204,7 @@ public class AuthenticationService {
 
         establishAuthenticatedSession(user, request, response, ip, ua, true);
         recordAttempt(user.getId(), user.getEmailNormalized(), ip, ua, "SUCCESS", null, true, true);
-        auditService.append(AuditContext.builder()
+        safeAppendAudit(AuditContext.builder()
                 .eventType("AUTH_MFA_SUCCESS")
                 .category("AUTH")
                 .severity(AuditSeverityLevel.NOTICE)
@@ -281,7 +281,7 @@ public class AuthenticationService {
 
     private void recordFailure(UUID userId, String email, String ip, String ua, String reason) {
         recordAttempt(userId, email, ip, ua, "FAILURE", reason, false, false);
-        auditService.append(AuditContext.builder()
+        safeAppendAudit(AuditContext.builder()
                 .eventType("AUTH_LOGIN_FAILED")
                 .category("AUTH")
                 .severity(AuditSeverityLevel.WARN)
@@ -357,6 +357,14 @@ public class AuthenticationService {
             user.setStatus(UserStatus.ACTIVE);
         }
         user.setUpdatedAt(OffsetDateTime.now());
+    }
+
+    private void safeAppendAudit(AuditContext context) {
+        try {
+            auditService.append(context);
+        } catch (RuntimeException e) {
+            log.error("Audit append failed for {}: {}", context.eventType(), e.getMessage(), e);
+        }
     }
 
     private static PortalException.Unauthorized genericInvalidCredentials() {
