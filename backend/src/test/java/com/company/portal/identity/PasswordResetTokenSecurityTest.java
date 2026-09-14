@@ -16,6 +16,7 @@ import com.company.portal.support.AbstractIntegrationTest;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -69,6 +70,12 @@ class PasswordResetTokenSecurityTest extends AbstractIntegrationTest {
     String adminIdRow = jdbcTemplate.queryForObject(
         "select id from users where email_normalized = ?", String.class, "admin@example.com");
     bootstrapAdminId = UUID.fromString(adminIdRow);
+  }
+
+  @AfterEach
+  void cleanup() {
+    // Clean up password reset tokens created during tests
+    jdbcTemplate.update("delete from password_reset_tokens where user_id = ?", bootstrapAdminId);
   }
 
   // ========== Token Validity Tests ==========

@@ -15,6 +15,7 @@ import com.company.portal.support.AbstractIntegrationTest;
 import jakarta.servlet.http.Cookie;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -105,6 +106,19 @@ class IdorPreventionIntegrationTest extends AbstractIntegrationTest {
     adminSessionCookie = loginAndGetSessionCookie("admin@example.com", "ChangeMeNow!123");
     user1SessionCookie = loginAndGetSessionCookie("user1@example.com", "TestPassword123!");
     user2SessionCookie = loginAndGetSessionCookie("user2@example.com", "TestPassword123!");
+  }
+
+  @AfterEach
+  void cleanupUsers() {
+    // Clean up test users created during setup (except bootstrapped admin)
+    if (regularUserId1 != null) {
+      jdbcTemplate.update("delete from user_roles where user_id = ?", regularUserId1);
+      jdbcTemplate.update("delete from users where id = ?", regularUserId1);
+    }
+    if (regularUserId2 != null) {
+      jdbcTemplate.update("delete from user_roles where user_id = ?", regularUserId2);
+      jdbcTemplate.update("delete from users where id = ?", regularUserId2);
+    }
   }
 
   // ========== GET /api/v1/users/{userId} Tests ==========
