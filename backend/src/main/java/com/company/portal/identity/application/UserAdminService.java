@@ -108,7 +108,7 @@ public class UserAdminService {
         }
         rbacService.invalidate(userId);
 
-        auditService.append(AuditContext.builder()
+        safeAppendAudit(AuditContext.builder()
                 .eventType("USER_CREATED")
                 .category("USER_ADMIN")
                 .severity(AuditSeverityLevel.NOTICE)
@@ -174,7 +174,7 @@ public class UserAdminService {
         user.setStatus(UserStatus.DISABLED);
         user.setUpdatedBy(actorId);
         user.setUpdatedAt(OffsetDateTime.now());
-        auditWrite(actorId, "USER_DEACTIVATED", targetId, user.getEmailNormalized());
+        auditWrite(actorId, "USER_DISABLED", targetId, user.getEmailNormalized());
         return userMapper.toDto(user);
     }
 
@@ -203,14 +203,14 @@ public class UserAdminService {
             userRoles.save(new UserRoleEntity(targetId, role.getId(), actorId));
         }
         rbacService.invalidate(targetId);
-        auditService.append(AuditContext.builder()
-                .eventType("USER_ROLES_REPLACED")
-                .category("RBAC")
+        safeAppendAudit(AuditContext.builder()
+                .eventType("ROLE_ASSIGNED")
+                .category("AUTHORIZATION")
                 .severity(AuditSeverityLevel.NOTICE)
                 .actorType("USER").actorId(actorId)
                 .targetType("USER").targetId(targetId.toString())
                 .targetDisplay(user.getEmailNormalized())
-                .addPayload("roleIds", roleIds)
+                .addPayload("roleIds", roleIds.stream().map(UUID::toString).toList())
                 .build());
         return rbacService.rolesOf(targetId).stream()
                 .map(r -> new RoleDto(r.getId(), r.getCode(), r.getName(), r.getDescription(),
@@ -228,7 +228,7 @@ public class UserAdminService {
     }
 
     private void auditWrite(UUID actorId, String eventType, UUID targetId, String display) {
-        auditService.append(AuditContext.builder()
+        safeAppendAudit(AuditContext.builder()
                 .eventType(eventType)
                 .category("USER_ADMIN")
                 .severity(AuditSeverityLevel.NOTICE)
@@ -245,6 +245,16 @@ public class UserAdminService {
             case "LOCKED" -> user.setStatus(UserStatus.LOCKED);
             case "PENDING" -> user.setStatus(UserStatus.PENDING_VERIFICATION);
             default -> throw new PortalException.Validation("Unknown status: " + apiStatus);
+        }
+    }
+
+    private void safeAppendAudit(AuditContext context) {
+        try {
+            auditService.append(context);
+        } catch (RuntimeException e) {
+            // Audit append failures should not block user operations. Log for diagnostics.
+            org.slf4j.LoggerFactory.getLogger(getClass())
+                    .error("Audit append failed for {}: {}", context.eventType(), e.getMessage(), e);
         }
     }
 }

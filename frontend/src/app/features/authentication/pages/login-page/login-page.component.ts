@@ -10,6 +10,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TranslatePipe } from '@ngx-translate/core';
 
 import { AuthService } from '@core/authentication/auth.service';
+import { getSafeRedirectUrl } from '@core/authentication/redirect.utils';
 import { messageKeyForError, normalizeHttpError } from '@core/error-handling/problem-details';
 import { PasswordInputComponent } from '@shared/ui';
 
@@ -61,7 +62,8 @@ export class LoginPageComponent {
         return;
       }
       const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
-      await this.router.navigateByUrl(returnUrl && returnUrl.startsWith('/') ? returnUrl : '/dashboard');
+      const safeUrl = getSafeRedirectUrl(returnUrl);
+      await this.router.navigate([safeUrl]);
     } catch (err) {
       if (err instanceof HttpErrorResponse) {
         const normalized = normalizeHttpError(err);

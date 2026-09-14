@@ -139,7 +139,7 @@ public class UserAdminController {
     @PreAuthorize("hasAuthority('session:revoke')")
     public Map<String, Object> revokeSessions(@PathVariable UUID userId,
                                               @RequestBody(required = false) Map<String, Object> body) {
-        int revoked = sessionService.adminRevokeAll(userId, "ADMIN_REVOKED");
+        int revoked = sessionService.adminRevokeAll(currentUser.currentUserIdOrThrow(), userId, "ADMIN_REVOKED");
         return Map.of("revokedCount", revoked);
     }
 

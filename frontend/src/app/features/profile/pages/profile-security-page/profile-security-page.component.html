@@ -83,7 +83,7 @@
   } @else {
     <div class="mfa-setup">
       <p>{{ 'profile.security.totpSetupInstructions' | translate }}</p>
-      @if (setup()!.qrCodeSvg; as qr) {
+      @if (qrCodeSvg(); as qr) {
         <div class="mfa-setup__qr" [innerHTML]="qr"></div>
       }
       <div class="mfa-setup__secret">

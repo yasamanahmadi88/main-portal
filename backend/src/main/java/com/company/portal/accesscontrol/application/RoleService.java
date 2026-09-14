@@ -48,7 +48,7 @@ public class RoleService {
 
     @Transactional(readOnly = true)
     public Page<RoleDto> list(Pageable pageable) {
-        return roles.findAll(pageable).map(this::toDto);
+        return roles.findAllWithPermissions(pageable).map(this::toDto);
     }
 
     @Transactional(readOnly = true)
@@ -114,7 +114,7 @@ public class RoleService {
         role.setPermissions(new HashSet<>(newPerms));
         role.setUpdatedAt(OffsetDateTime.now());
         rbacService.invalidateAll();
-        auditService.append(AuditContext.builder()
+        safeAppendAudit(AuditContext.builder()
                 .eventType("ROLE_PERMISSIONS_REPLACED")
                 .category("RBAC")
                 .severity(AuditSeverityLevel.NOTICE)
@@ -131,11 +131,15 @@ public class RoleService {
     }
 
     private RoleEntity mustLoad(UUID id) {
-        return roles.findById(id).orElseThrow(() -> new PortalException.NotFound("Role not found"));
+        List<RoleEntity> result = roles.findAllByIdWithPermissions(List.of(id));
+        if (result.isEmpty()) {
+            throw new PortalException.NotFound("Role not found");
+        }
+        return result.get(0);
     }
 
     private void auditRoleWrite(UUID actorId, String eventType, RoleEntity role) {
-        auditService.append(AuditContext.builder()
+        safeAppendAudit(AuditContext.builder()
                 .eventType(eventType)
                 .category("RBAC")
                 .severity(AuditSeverityLevel.NOTICE)
@@ -149,14 +153,22 @@ public class RoleService {
                 .build());
     }
 
+    private void safeAppendAudit(AuditContext context) {
+        try {
+            auditService.append(context);
+        } catch (RuntimeException e) {
+            org.slf4j.LoggerFactory.getLogger(getClass())
+                    .error("Audit append failed for {}: {}", context.eventType(), e.getMessage(), e);
+        }
+    }
+
     @Transactional(readOnly = true)
     public RoleDto toDto(RoleEntity r) {
-        RoleEntity managed = roles.findById(r.getId()).orElse(r);
         return new RoleDto(
-                managed.getId(), managed.getCode(), managed.getName(), managed.getDescription(),
-                managed.isSystemRole(),
-                managed.getPermissions().stream().map(RoleService::toPermissionDto).toList(),
-                managed.getCreatedAt(), managed.getUpdatedAt());
+                r.getId(), r.getCode(), r.getName(), r.getDescription(),
+                r.isSystemRole(),
+                r.getPermissions().stream().map(RoleService::toPermissionDto).toList(),
+                r.getCreatedAt(), r.getUpdatedAt());
     }
 
     public static PermissionDto toPermissionDto(PermissionEntity p) {

@@ -84,7 +84,7 @@ public class PasswordService {
         token.setRequestUserAgent(userAgent);
         tokens.save(token);
 
-        auditService.append(AuditContext.builder()
+        safeAppendAudit(AuditContext.builder()
                 .eventType("PASSWORD_RESET_REQUESTED")
                 .category("AUTH")
                 .severity(AuditSeverityLevel.NOTICE)
@@ -131,7 +131,7 @@ public class PasswordService {
         tokens.save(token);
         tokens.invalidateActiveForUser(user.getId(), OffsetDateTime.now());
 
-        auditService.append(AuditContext.builder()
+        safeAppendAudit(AuditContext.builder()
                 .eventType("PASSWORD_RESET_COMPLETED")
                 .category("AUTH")
                 .severity(AuditSeverityLevel.NOTICE)
@@ -166,7 +166,7 @@ public class PasswordService {
 
         tokens.invalidateActiveForUser(user.getId(), OffsetDateTime.now());
 
-        auditService.append(AuditContext.builder()
+        safeAppendAudit(AuditContext.builder()
                 .eventType("PASSWORD_CHANGED")
                 .category("AUTH")
                 .severity(AuditSeverityLevel.NOTICE)
@@ -181,6 +181,15 @@ public class PasswordService {
                 user.getLocale(), Map.of(
                         "changedAt", OffsetDateTime.now().toString(),
                         "displayName", user.getDisplayName()));
+    }
+
+    private void safeAppendAudit(AuditContext context) {
+        try {
+            auditService.append(context);
+        } catch (RuntimeException e) {
+            // Audit append failures should not block password operations. Log for diagnostics.
+            log.error("Audit append failed for {}: {}", context.eventType(), e.getMessage(), e);
+        }
     }
 
     private String randomTokenUrlSafe() {

@@ -1,5 +1,8 @@
 package com.company.portal.identity.application;
 
+import com.company.portal.audit.api.AuditContext;
+import com.company.portal.audit.api.AuditService;
+import com.company.portal.audit.api.AuditSeverityLevel;
 import com.company.portal.identity.domain.UserSessionMetadataEntity;
 import com.company.portal.identity.repository.UserSessionMetadataRepository;
 import com.company.portal.shared.error.PortalException;
@@ -7,6 +10,8 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.session.FindByIndexNameSessionRepository;
@@ -23,13 +28,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class SessionService {
 
+    private static final Logger log = LoggerFactory.getLogger(SessionService.class);
+
     private final UserSessionMetadataRepository sessionMetadata;
     private final FindByIndexNameSessionRepository<? extends Session> sessionRepository;
+    private final AuditService auditService;
 
     public SessionService(UserSessionMetadataRepository sessionMetadata,
-                          FindByIndexNameSessionRepository<? extends Session> sessionRepository) {
+                          FindByIndexNameSessionRepository<? extends Session> sessionRepository,
+                          AuditService auditService) {
         this.sessionMetadata = sessionMetadata;
         this.sessionRepository = sessionRepository;
+        this.auditService = auditService;
     }
 
     @Transactional
@@ -101,13 +111,30 @@ public class SessionService {
     }
 
     @Transactional
-    public int adminRevokeAll(UUID userId, String reason) {
+    public int adminRevokeAll(UUID actorId, UUID userId, String reason) {
         int updated = sessionMetadata.revokeAllForUser(userId, null,
                 reason == null ? "ADMIN_REVOKED" : reason, OffsetDateTime.now());
         for (UserSessionMetadataEntity s : sessionMetadata.findActiveByUserId(userId)) {
             deleteStoreSession(s.getSessionId());
         }
+        safeAppendAudit(AuditContext.builder()
+                .eventType("SESSION_REVOKED")
+                .category("SESSION")
+                .severity(AuditSeverityLevel.NOTICE)
+                .actorType("USER").actorId(actorId)
+                .targetType("USER").targetId(userId.toString())
+                .addPayload("revokedCount", updated)
+                .build());
         return updated;
+    }
+
+    private void safeAppendAudit(AuditContext context) {
+        try {
+            auditService.append(context);
+        } catch (RuntimeException e) {
+            // Audit append failures should not block session operations. Log for diagnostics.
+            log.error("Audit append failed for {}: {}", context.eventType(), e.getMessage(), e);
+        }
     }
 
     private void deleteStoreSession(String sessionId) {

@@ -18,6 +18,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Live security checks against Testcontainers PostgreSQL + Redis (when Docker is available).
@@ -27,6 +28,7 @@ import org.springframework.test.web.servlet.MockMvc;
     value = "com.company.portal.support.DockerAvailability#isAvailable",
     disabledReason = "Docker unavailable for Testcontainers")
 @AutoConfigureMockMvc
+@Transactional
 class LiveSecurityIntegrationTest extends AbstractIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
