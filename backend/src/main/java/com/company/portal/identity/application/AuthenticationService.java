@@ -228,7 +228,7 @@ public class AuthenticationService {
         String ua = request != null ? RequestContext.userAgent(request) : null;
 
         if (userId != null) {
-            auditService.append(AuditContext.builder()
+            safeAppendAudit(AuditContext.builder()
                     .eventType("AUTH_LOGOUT")
                     .category("AUTH")
                     .severity(AuditSeverityLevel.INFO)
