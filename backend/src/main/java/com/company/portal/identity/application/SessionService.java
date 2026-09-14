@@ -10,6 +10,8 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.session.FindByIndexNameSessionRepository;
@@ -25,6 +27,8 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class SessionService {
+
+    private static final Logger log = LoggerFactory.getLogger(SessionService.class);
 
     private final UserSessionMetadataRepository sessionMetadata;
     private final FindByIndexNameSessionRepository<? extends Session> sessionRepository;
@@ -113,7 +117,7 @@ public class SessionService {
         for (UserSessionMetadataEntity s : sessionMetadata.findActiveByUserId(userId)) {
             deleteStoreSession(s.getSessionId());
         }
-        auditService.append(AuditContext.builder()
+        safeAppendAudit(AuditContext.builder()
                 .eventType("SESSION_REVOKED")
                 .category("SESSION")
                 .severity(AuditSeverityLevel.NOTICE)
@@ -122,6 +126,15 @@ public class SessionService {
                 .addPayload("revokedCount", updated)
                 .build());
         return updated;
+    }
+
+    private void safeAppendAudit(AuditContext context) {
+        try {
+            auditService.append(context);
+        } catch (RuntimeException e) {
+            // Audit append failures should not block session operations. Log for diagnostics.
+            log.error("Audit append failed for {}: {}", context.eventType(), e.getMessage(), e);
+        }
     }
 
     private void deleteStoreSession(String sessionId) {
