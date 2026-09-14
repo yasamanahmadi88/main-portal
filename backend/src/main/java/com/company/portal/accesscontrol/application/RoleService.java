@@ -114,7 +114,7 @@ public class RoleService {
         role.setPermissions(new HashSet<>(newPerms));
         role.setUpdatedAt(OffsetDateTime.now());
         rbacService.invalidateAll();
-        auditService.append(AuditContext.builder()
+        safeAppendAudit(AuditContext.builder()
                 .eventType("ROLE_PERMISSIONS_REPLACED")
                 .category("RBAC")
                 .severity(AuditSeverityLevel.NOTICE)
@@ -139,7 +139,7 @@ public class RoleService {
     }
 
     private void auditRoleWrite(UUID actorId, String eventType, RoleEntity role) {
-        auditService.append(AuditContext.builder()
+        safeAppendAudit(AuditContext.builder()
                 .eventType(eventType)
                 .category("RBAC")
                 .severity(AuditSeverityLevel.NOTICE)
@@ -151,6 +151,15 @@ public class RoleService {
                 .targetId(role.getId().toString())
                 .targetDisplay(role.getCode())
                 .build());
+    }
+
+    private void safeAppendAudit(AuditContext context) {
+        try {
+            auditService.append(context);
+        } catch (RuntimeException e) {
+            org.slf4j.LoggerFactory.getLogger(getClass())
+                    .error("Audit append failed for {}: {}", context.eventType(), e.getMessage(), e);
+        }
     }
 
     @Transactional(readOnly = true)
